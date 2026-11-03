@@ -354,7 +354,7 @@ export class Net {
 
   // ---------------- loop ----------------
   fixedUpdate(dt) {
-    if (this.colliders && this.client.online) this.colliders.fixedUpdate(dt, this.step++);
+    this.colliders?.fixedUpdate(dt, this.step++);
   }
 
   update(dt, game, alpha = 1) {

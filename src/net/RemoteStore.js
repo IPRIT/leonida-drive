@@ -140,6 +140,7 @@ export class RemoteStore {
       if (!insertOld(e, t, rec)) this.stats.dropsOld++;
       return;
     }
+    e.sampleDelay = this.offset === undefined ? Infinity : Math.max(0, localNow + this.offset - t);
     // teleport: server counter changed, or a jump the dead reckoning can't explain
     const tpc = rec.flags & F_TPC;
     if (e.n > 0) {
@@ -253,7 +254,7 @@ function makeEntity() {
     // curve continuity
     off: new Float64Array(12), // per axis x, y, z, yaw: offset, offset velocity, offset acceleration
     cx: 0, cy: 0, cz: 0, cyaw: 0, cvx: 0, cvy: 0, cvz: 0, cyr: 0, cax: 0, cay: 0, caz: 0, hasCurve: false,
-    orphanAt: 0, recvAt: 0,
+    orphanAt: 0, recvAt: 0, sampleDelay: Infinity,
     // info
     nickCode: 0, color: 0, paint: 0, infoVer: -1, wantVer: 0, infoWanted: false, hasInfo: false, infoAt: 0,
     hasFull: false, km: 0, kf: 0, kp: 0, kr: 0, ks: 0, // last known optional record parts (model, flags, pitch, roll, steer)
@@ -265,7 +266,7 @@ function makeEntity() {
 function resetEntity(e, id) {
   e.id = id; e.n = 0; e.head = 0; e.lastT = -1e15; e.tpc = -1; e.stream = 0;
   e.alpha = 0; e.state = 'live'; e.tp = 0; e.tpT = 0; e.snapNext = false; e.left = false;
-  e.off.fill(0); e.hasCurve = false; e.orphanAt = 0; e.recvAt = 0;
+  e.off.fill(0); e.hasCurve = false; e.orphanAt = 0; e.recvAt = 0; e.sampleDelay = Infinity;
   e.nickCode = 0; e.color = 0; e.paint = 0; e.infoVer = -1; e.infoWanted = false; e.hasInfo = false; e.infoAt = 0;
   e.hasFull = false; e.km = 0; e.kf = 0; e.kp = 0; e.kr = 0; e.ks = 0;
   e.name = ''; e.finish = 0; e.neon = null; e.tint = false; e.horn = null; e.armor = false; e.outfit = []; e.look = null; e.worth = 0; e.wreck = null; e.damage = null; e.wreckH = null; e.away = false;
