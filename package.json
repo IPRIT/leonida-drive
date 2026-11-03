@@ -1,13 +1,13 @@
 {
   "name": "leonida-drive",
   "private": true,
-  "version": "0.11.1",
+  "version": "0.11.2",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5317",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5318",
-    "check": "node src/i18n/check-locales.mjs && node tools/economy/test-economy.mjs && node src/damage/test-destruction.mjs && node --test tools/tests/completion.test.mjs tools/tests/render-settings.test.mjs tools/tests/debug.test.mjs tools/tests/remote-colliders.test.mjs",
+    "check": "node src/i18n/check-locales.mjs && node tools/economy/test-economy.mjs && node src/damage/test-destruction.mjs && node --test tools/tests/completion.test.mjs tools/tests/render-settings.test.mjs tools/tests/debug.test.mjs tools/tests/remote-colliders.test.mjs tools/tests/character-curbs.test.mjs",
     "check:roads": "node tools/tests/roadsteps.test.mjs --refine --assert --top 0 && node tools/tests/roadlevels.test.mjs && node tools/tests/roadprobe.test.mjs --assert-highways --top 0"
   },
   "dependencies": {

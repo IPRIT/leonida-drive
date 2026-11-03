@@ -7,6 +7,7 @@
 import { GROUPS, groups } from '../vehicle/groups.js';
 
 const DEG = Math.PI / 180;
+const SUPPORT_Y = Math.cos(52 * DEG);
 
 export class CharacterMotor {
   /**
@@ -46,6 +47,7 @@ export class CharacterMotor {
     this.push = { x: 0, z: 0, d: 0, cap: 0 }; // vehicle push-out of the last step (unit dir away from it, depth m)
     this.pushOut = true;
     this._ct = null;
+    this._supportHit = null;
     this._rot = { x: 0, y: 0, z: 0, w: 1 };
     this._pushCb = (c) => this._pushFrom(c);
     this.pos = { x: p.x, y: p.y + this.lift + 0.02, z: p.z }; // capsule centre after the pending step
@@ -118,6 +120,16 @@ export class CharacterMotor {
     const wasGrounded = this.grounded;
     const fallV = this.vy;
     this.grounded = !swim && this.ctrl.computedGrounded();
+    // On trimesh kerbs KCC sometimes reports `grounded=false` while its actual
+    // collision normal points up and gravity is blocked. Recognise that support
+    // instead of accumulating a fictitious multi-second fall on a 14 cm step.
+    if (!this.grounded && !swim && d.y < 0 && mv.y > d.y + 1e-5) {
+      for (let i = 0; i < this.ctrl.numComputedCollisions(); i++) {
+        const hit = this.ctrl.computedCollision(i, this._supportHit || undefined);
+        if (hit) this._supportHit = hit;
+        if (hit?.normal1.y >= SUPPORT_Y) { this.grounded = true; break; }
+      }
+    }
     this.pos.x += mv.x; this.pos.y += mv.y; this.pos.z += mv.z;
     this.body.setNextKinematicTranslation(this.pos);
     this.prev.x = this.cur.x; this.prev.y = this.cur.y; this.prev.z = this.cur.z;
@@ -131,6 +143,9 @@ export class CharacterMotor {
       this.airTime = 0;
     } else {
       this.airTime += dt;
+      // A steep slope/obstacle may clip the fall without becoming walkable.
+      // Keep gravity's velocity consistent with the movement actually applied.
+      if (d.y < 0 && mv.y > d.y + 1e-5) this.vy = Math.max(this.vy, Math.min(0, mv.y / dt));
       if (d.y > 0 && mv.y < d.y * 0.3) this.vy = Math.min(this.vy, 0); // head bump
     }
   }
