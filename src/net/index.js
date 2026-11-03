@@ -387,6 +387,9 @@ export class Net {
   // The blip array and its objects are reused (consumers keep the reference and read it when they draw).
   _blips(dt, now) {
     const g = this.game, c = this.client, tracks = c.tracks, out = this.blips;
+    let mapView = null;
+    for (const fm of g.cartography?.fullMaps || []) if (fm.visible) { mapView = fm.view; break; }
+    c.wantMap(!!mapView && (g.settings?.mpShowPlayers ?? true) && !document.hidden);
     out.length = 0;
     const show = (g.settings?.mpShowPlayers ?? true) && c.online;
     if (show) {
@@ -413,7 +416,9 @@ export class Net {
         else {
           const identity = c.radarNames.get(t.id);
           b.name = identity?.name || ''; b.nameAt = identity?.at ?? -1;
-          if ((!identity || now - identity.at > 30000) && (!t.nameAskedAt || now - t.nameAskedAt > 10000)) {
+          const visible = mapView ? Math.abs(t.x - mapView.cx) < mapView.w * mapView.mpp / 2 && Math.abs(t.z - mapView.cz) < mapView.h * mapView.mpp / 2
+            : Math.hypot(t.x - g.player.focus.x, t.z - g.player.focus.z) < 1000;
+          if (visible && (!identity || now - identity.at > 30000) && (!t.nameAskedAt || now - t.nameAskedAt > 10000)) {
             if (c.radarInfoQueue.size < 1024) { t.nameAskedAt = now; c.radarInfoQueue.add(t.id); }
           }
         }

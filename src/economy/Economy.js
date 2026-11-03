@@ -904,7 +904,7 @@ export class Economy {
   _discover() {
     const g = this.game, f = g.player?.focus;
     if (!f || !g.world3d?.areaAt || (this.remote && !this.server)) return;
-    if (g.player.wastedT > 0) return;
+    if (g.player.wastedT > 0 || g.player.mode === 'free') return;
     const a = g.world3d.areaAt(f.x, f.z);
     const key = a?.key || a?.name;
     if (!key || this.districts.has(key)) return;

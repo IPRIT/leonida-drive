@@ -21,6 +21,7 @@ import {
 } from '../../src/net/shared/combat.js';
 import { worldClock } from '../../src/net/shared/worldclock.js';
 import { drArc } from '../../src/net/shared/dr.js';
+import { S_MAP, MAP_HEADER, MAP_ENTRY, writeMapEntry } from '../../src/net/shared/extensions.js';
 import {
   ARENA_BUFFERS, ARENA_MAX_ENTRIES, ARENA_HDR, KIND_NEAR, KIND_FAR, KIND_RADAR, KIND_GLOBAL, KIND_PLAYER, slotName,
   H_TICK, H_TICK_MS, H_TICK_MS_MAX, H_ONLINE, H_VISIBLE, H_ARENA_BYTES, H_TOTAL_PLAYERS, H_TICK_P99, H_ENC_RECORDS, H_DROPPED_TICKS, H_EGRESS, H_BUDGET,
@@ -62,7 +63,7 @@ const makeInv = (hz) => THRESHOLDS.map((t) => ({
 }));
 // clients upload on deviation too (≥ 4 Hz heartbeat): a sample older than this means a stalled sender — hold it,
 // dead-reckoned this far, with zero velocity
-const STALE_MS = 450;
+const STALE_MS = 1500; // allow a mobile-network handover before holding the last predicted pose
 const MAX_AGE_MS = 255 * AGE_UNIT; // the record's age byte covers 0..510 ms
 const HYST = 3; // m: an entity changes cell only after moving this far past the border (no flapping)
 
@@ -103,6 +104,7 @@ export class Hub {
     this.prioN = new Float32Array(N); // priorities computed in the sequential slot scan (cache-friendly)
     this.prioF = new Float32Array(N);
     this.deq = new Float64Array(8);
+    this.projected = {};
     this.parts = new Uint8Array(256);
     this.rs = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, roll: 0, yawRate: 0, steer: 0, model: 0, flags: 0, turret: 0, barrel: 0, age: 0 };
     this.fresh = new Uint8Array(GRID_CELLS);
@@ -192,9 +194,11 @@ export class Hub {
     const model = v.model[s], flags = v.flags[s];
     const tur = v.ext[s * 2], bar = v.ext[s * 2 + 1];
     if (Atomics.load(v.seq, s) !== q1) return false;
-    if (tMs - st > STALE_MS) {
-      const d = STALE_MS / 1000;
-      x += vx * d; y += vy * d; z += vz * d; yaw = wrapAngle(yaw + yr * d);
+    const received = v.receivedT[s] || st;
+    if (tMs - received > STALE_MS) {
+      const d = Math.max(0, Math.min(3, (received - st + STALE_MS) / 1000));
+      const q = drArc(this.projected, x, y, z, vx, vy, vz, yaw, yr, d);
+      x = q.x; y = q.y; z = q.z; yaw = wrapAngle(q.yaw);
       vx = vy = vz = yr = 0;
       st = tMs - MAX_AGE_MS; // time is irrelevant for a stopped entity: keep it representable
     } else {
@@ -202,7 +206,9 @@ export class Hub {
       // to the sub-millimetre, which keeps the client's Hermite curve free of timestamp noise
       const q = tMs - Math.min(255, Math.max(0, Math.round((tMs - st) / AGE_UNIT))) * AGE_UNIT;
       const d = (q - st) / 1000;
-      x += vx * d; y += vy * d; z += vz * d; yaw = wrapAngle(yaw + yr * d);
+      const projected = drArc(this.projected, x, y, z, vx, vy, vz, yaw, yr, d);
+      x = projected.x; y = projected.y; z = projected.z; yaw = wrapAngle(projected.yaw);
+      vx = projected.vx; vy = projected.vy; vz = projected.vz;
       st = q;
     }
     const c = this.cur, k = s * CS;
@@ -331,6 +337,8 @@ export class Hub {
 
     // 4) radar (every 2 s per radar cell), board/density snapshots (served on request), pulse
     if (send) this._radar(T);
+    // A single world snapshot for all map viewers; no work when nobody requests it.
+    if (T % 40 === 0 && T - Atomics.load(v.mapMeta, 2) < this.hz * 10) this._map(T, tMs);
     if (T % DENSITY_PERIOD === 8) this._density();
     if (T % GLOBAL_PERIOD === 0) this._global(T, tMs, online);
     if (T % PULSE_PERIOD === 0) this._pulse(T, online);
@@ -664,6 +672,23 @@ export class Hub {
   }
 
   // ---------------- radar / density / global ----------------
+  _map(T, tMs) {
+    const v = this.v, dv = new DataView(v.mapMsg.buffer), p = this.rs;
+    Atomics.add(v.mapMeta, 0, 1);
+    let n = 0, o = MAP_HEADER;
+    for (let s = 0; s < this.N; s++) {
+      if (!this.visible[s]) continue;
+      const k = s * CS, dt = Math.max(0, Math.min(0.45, (tMs - this.cur[k + 11]) / 1000));
+      p.id = this._id(s); p.x = this.cur[k] + this.cur[k + 3] * dt; p.z = this.cur[k + 2] + this.cur[k + 5] * dt;
+      p.vx = this.cur[k + 3]; p.vz = this.cur[k + 5]; p.yaw = this.cur[k + 6]; p.color = v.color[s]; p.vclass = v.vclass[s];
+      o = writeMapEntry(dv, o, p); n++;
+    }
+    dv.setUint8(0, S_MAP); dv.setUint32(4, n, true); dv.setUint32(12, T, true);
+    dv.setUint32(16, T, true);
+    Atomics.store(v.mapMeta, 1, MAP_HEADER + n * MAP_ENTRY);
+    Atomics.add(v.mapMeta, 0, 1);
+  }
+
   _radar(T) {
     // called on send ticks: RADAR_PERIOD / SEND_EVERY phases, each radar cell once per period
     const v = this.v, dv = v.arenaDV, step = RADAR_PERIOD / SEND_EVERY, phase = (T / SEND_EVERY | 0) % step;

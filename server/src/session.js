@@ -25,6 +25,8 @@ import { rankOf, slotName, setSlotName, OUTFIT_STRIDE, JOIN_RING, DAMAGE_STRIDE 
 import { checkName } from './names.js';
 import { ipForLog } from './privacy.js';
 import { outfitCodes, itemOfCode } from '../../src/net/shared/outfit-codes.js';
+import { C_ADMIN, S_ADMIN, S_FEATURES, FEATURE, MAP_ORDER, jsonMessage, readJson } from '../../src/net/shared/extensions.js';
+import { ADMIN_TTL } from './admin.js';
 
 export const EV_PAINT = 3; // client event: param = vehicle paint RGB
 
@@ -155,6 +157,7 @@ export class Session {
       case C_OUTFIT: this._outfit(dv, now); break;
       case C_NICK: { const r = decodeNickReq(dv); if (r) this._nickReq(r, now); else this._strike(3, 'nick'); break; }
       case C_VIS: this._vis(dv, now); break;
+      case C_ADMIN: void this._admin(readJson(dv), now).catch(() => { if (!this.closed) this.send(jsonMessage(S_ADMIN, { ok: false, reason: 'failed' })); }); break;
       default: this._strike(3, `type ${type}`);
     }
   }
@@ -281,6 +284,7 @@ export class Session {
       claimsFrozen: this.frozen, token: this.newToken, models: gw.vehicles.list, name: this.customName,
     }));
     this.newToken = null;
+    this.send(jsonMessage(S_FEATURES, { bits: FEATURE.MAP | (gw.adminAuth.enabled ? FEATURE.ADMIN : 0) }));
     if (daily) this.send(encodeWallet(WALLET.GRANTED, 0, this.econ.money, daily.amount, CLAIM.DAILY, 1, this.econ.worth()));
     this._sendOwned();
     this._sendProgress();
@@ -360,6 +364,7 @@ export class Session {
     v.vel[p] = s.vx; v.vel[p + 1] = s.vy; v.vel[p + 2] = s.vz;
     v.rot[r] = s.yaw; v.rot[r + 1] = s.pitch; v.rot[r + 2] = s.roll; v.rot[r + 3] = s.yawRate; v.rot[r + 4] = s.steer;
     v.sampleT[slot] = sampleT;
+    v.receivedT[slot] = now;
     v.model[slot] = this.model;
     v.flags[slot] = (s.flags | (this.tpc & F_TPC) | ((this.infoVer & F_INFO_MASK) << F_INFO_SHIFT) | (s.ext ? F_EXT : 0)) & 0xffff;
     if (s.ext) { v.ext[slot * 2] = s.turret; v.ext[slot * 2 + 1] = s.barrel; }
@@ -860,10 +865,57 @@ export class Session {
   }
 
   // ---------------- scoreboard pages ----------------
+  async _admin(r, now) {
+    if (!r || !Number.isInteger(r.id) || r.id < 1 || r.id > 0xffffffff || typeof r.op !== 'string') return;
+    const reply = (value) => { if (!this.closed) this.send(jsonMessage(S_ADMIN, { id: r.id, ...value })); };
+    if (this.adminPending) return reply({ ok: false, reason: 'busy' });
+    if (r.id <= (this.adminLastId || 0)) return reply({ ok: false, reason: 'replay' });
+    this.adminLastId = r.id;
+    if (r.op === 'login') {
+      this.adminPending = true;
+      let result;
+      try { result = await this.gw.adminAuth.verify(this.ip, r.password, now); }
+      finally { r.password = ''; this.adminPending = false; }
+      if (this.closed) return;
+      if (result !== 'ok') return reply({ ok: false, reason: result });
+      this.adminUntil = performance.timeOrigin + performance.now() + ADMIN_TTL;
+      this.gw.securityLog(this, 'admin', 'login');
+      return reply({ ok: true, ttl: ADMIN_TTL / 1000 });
+    }
+    if (r.op === 'logout') { this.adminUntil = 0; return reply({ ok: true, ttl: 0 }); }
+    if (!(now < this.adminUntil)) return reply({ ok: false, reason: 'auth' });
+    if (now - (this.adminActionAt || 0) < 500) return reply({ ok: false, reason: 'rate' });
+    const e = this.econ;
+    if (r.op === 'credit') {
+      if (!Number.isSafeInteger(r.amount) || r.amount < 1 || r.amount > 100000000 || e.money + r.amount > 1000000000) return reply({ ok: false, reason: 'amount' });
+      e.money += r.amount;
+    } else if (r.op === 'unlock') {
+      for (const [id] of this.gw.econCtx.prices) e.owned.add(id);
+      for (const [id] of this.gw.wardrobe?.byId || []) if (!e.clothes.has(id)) e.clothes.set(id, null);
+      this._sendOwned(); this._sendGarage(false);
+    } else if (r.op === 'thaw') {
+      this.frozen = false; this.rec.flags &= ~FLAG_FROZEN; delete this.stats.frozenUntil;
+      this.suspicion = 0; this.suspT = now;
+      this.send(encodeNotice(NOTICE.CLAIMS_RESTORED, 0));
+    } else return reply({ ok: false, reason: 'invalid' });
+    this.adminActionAt = now; this.dirtyFast = true;
+    this._writeInfo(true);
+    this.gw.flushNow(this);
+    this.send(encodeWallet(WALLET.SYNC, 0, e.money, 0, 0, e.combo, e.worth()));
+    this._sendRank(now, true);
+    this.gw.securityLog(this, 'admin', r.op === 'credit' ? `credit ${r.amount}` : r.op);
+    reply({ ok: true, balance: e.money, ttl: Math.max(0, Math.floor((this.adminUntil - now) / 1000)) });
+  }
+
   // "online" pages walk the shared ring of recent joins backwards from a cursor: O(page), never a full list
   _list(dv, now) {
     const r = decodeList(dv);
     if (!r) { this._strike(3, 'list'); return; }
+    if (r.order === MAP_ORDER) {
+      if (now - (this.lastMapPage ?? -1e12) < 80) return;
+      this.lastMapPage = now;
+      this.gw.sendMap(this, r.cursor, now); return;
+    }
     if (r.order === LIST.WORTH || r.order === LIST.DENSITY) {
       // small snapshots served on request instead of broadcast to everyone (≤ 1 per second each)
       const k = r.order === LIST.WORTH ? 'lastBoard' : 'lastDensity';

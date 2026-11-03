@@ -154,6 +154,7 @@ export class LocalPlayer {
 
   // ---------------- corrections & restore ----------------
   _correct(c) {
+    this.corrections = (this.corrections || 0) + 1;
     this.corr = c.corr;
     this.lastUp = null; // upload the corrected pose right away
     this.place(c.x, c.y, c.z, c.yaw, false);

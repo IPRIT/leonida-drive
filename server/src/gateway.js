@@ -15,6 +15,8 @@ import { renderHealth, renderMetrics } from './metrics.js';
 import { exportPool } from '../../src/economy/rules.js';
 import { loadBlocklist } from './names.js';
 import { setIpSecret, ipForLog } from './privacy.js';
+import { MAP_HEADER, MAP_ENTRY, MAP_PAGE } from '../../src/net/shared/extensions.js';
+import { AdminAuth } from './admin.js';
 
 export const serverNow = () => performance.timeOrigin + performance.now();
 
@@ -25,6 +27,7 @@ export class Gateway {
   constructor(o) {
     Object.assign(this, { id: o.id, v: o.v, cfg: o.cfg, app: o.app, db: o.db, world: o.world, vehicles: o.vehicles, log: o.log || console });
     setIpSecret(o.cfg.ipHashSecret);
+    this.adminAuth = new AdminAuth(o.cfg.adminPasswordHash);
     this.toHub = o.toHub || (() => {});
     this.range = o.range;
     this.bySlot = new Map(); // slot → Session (direct hub messages: damage, hit confirmations)
@@ -268,6 +271,32 @@ export class Gateway {
   sendDensity(session) {
     const v = this.v, len = v.densityLen[0];
     if (len > 0) session.send(v.densityMsg.slice(0, len));
+  }
+
+  sendMap(session, cursor, now) {
+    const v = this.v;
+    Atomics.store(v.mapMeta, 2, this.lastTick);
+    if (!cursor || !session.mapSnapshot || now - session.mapSnapshotAt > 30000) {
+      if (now - (session.mapAskedAt ?? -1e12) < 1800) return;
+      session.mapAskedAt = now;
+      const ver = Atomics.load(v.mapMeta, 0), len = Atomics.load(v.mapMeta, 1);
+      if ((ver & 1) || !len) { session.mapAskedAt = -1e12; return; }
+      if (this.mapVersion !== ver) {
+        const copy = v.mapMsg.slice(0, len);
+        if (Atomics.load(v.mapMeta, 0) !== ver) { session.mapAskedAt = -1e12; return; }
+        this.mapSnapshot = copy; this.mapVersion = ver;
+      }
+      session.mapSnapshot = this.mapSnapshot; session.mapSnapshotAt = now; cursor = 0;
+    }
+    const source = session.mapSnapshot, dv = new DataView(source.buffer), total = dv.getUint32(4, true);
+    if (cursor > total) return;
+    const n = Math.min(MAP_PAGE, total - cursor), end = cursor + n;
+    const out = new Uint8Array(MAP_HEADER + n * MAP_ENTRY), view = new DataView(out.buffer);
+    out.set(source.subarray(0, MAP_HEADER));
+    view.setUint8(1, end === total ? 1 : 0); view.setUint16(2, n, true); view.setUint32(8, cursor, true);
+    out.set(source.subarray(MAP_HEADER + cursor * MAP_ENTRY, MAP_HEADER + end * MAP_ENTRY), MAP_HEADER);
+    session.send(out);
+    if (end === total) session.mapSnapshot = null;
   }
 
   // ---------------- tick: publish the hub's arena ----------------

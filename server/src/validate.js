@@ -80,11 +80,13 @@ export class Movement {
     const hs = Math.hypot(s.vx, s.vz);
     if (hs > vmax * 1.3 + 5) return V_SPEED;
     if (!this.placed) { this.place(s.x, s.y, s.z, s.yaw, now); return V_JUMP; }
-    const dt = Math.min(5, Math.max(0, (now - this.t) / 1000));
-    // distance budget: accumulates at the speed limit (absorbs bursts after lag), capped at ~1.5 s of travel
-    this.budget = Math.min(this.budget + vmax * 1.15 * dt, vmax * 1.5 + 30);
+    const dt = Math.max(0, (now - this.t) / 1000);
+    // The newest upload may replace seconds of unsent states under backpressure.
+    // Credit the actual elapsed sample time for this move; cap only the unused
+    // carry after acceptance. Rejected samples never refill the budget twice.
+    const available = this.budget + vmax * 1.15 * dt;
     const dh = Math.hypot(s.x - this.x, s.z - this.z);
-    if (dh > this.budget + 2) {
+    if (dh > available + 2) {
       const g = this.grace;
       if (g && now <= g.until && g.test(s.x, s.z, s, now)) {
         this.grace = null;
@@ -94,7 +96,6 @@ export class Movement {
       }
       return V_TELEPORT;
     }
-    this.budget = Math.max(0, this.budget - dh);
     const air = this.vclass === VCLASS.HELI || this.vclass === VCLASS.PLANE;
     if (!air) {
       // no climbing faster than the class allows (ramps and bumps get slack)
@@ -105,8 +106,9 @@ export class Movement {
       const altLimit = afterAir ? Math.max(lim.alt, this.prevAlt) : lim.alt;
       if (s.y - ground > altLimit + 60) return V_ALTITUDE;
       // sustained climb (fly hack): height gained over the last 6 s
-      if (!afterAir && this.hn > 8 && s.y - this._minY(now - 6000) > lim.climb) return V_FLY;
+      if (!afterAir && dt < 6 && this.hn > 8 && s.y - this._minY(now - 6000) > lim.climb) return V_FLY;
     }
+    this.budget = Math.min(Math.max(0, available - dh), vmax * 1.5 + 30);
     this._accept(s, now, false);
     return V_OK;
   }

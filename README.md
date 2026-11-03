@@ -78,6 +78,10 @@ For your own hosted server, set `VITE_MP_URL=wss://your-host/ws` when building. 
 
 The **Controls** tab lists vehicle-specific, controller and mobile controls. Teleport and world-time controls are available in singleplayer.
 
+The optional **Control Room** opens after ten quick clicks on the version in **About**. It has live frame-time graphs, an in-game diagnostics overlay, snapshot latency/loss simulation, collider inspection, and cameras for all 28 multilevel crossings. Exported reports contain performance and game-state counters, with no login credentials. **Disable** removes the panel and restores its temporary effects.
+
+Full-map player updates cover the entire island every two seconds while the map is open. Distant markers share the same smooth tracks as nearby players; screen-space clusters retain player counts without loading distant cars into the 3D scene. Driving is simulated locally, including during reconnection. A connection outage can still hide another player's latest turn; prediction cannot recover information that has not arrived.
+
 <details>
 <summary>Downtown after dark</summary>
 

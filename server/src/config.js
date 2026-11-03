@@ -33,6 +33,7 @@ export function loadConfig(env = process.env) {
     connRatePerIp: Math.max(1, int(env.CONN_RATE_PER_IP, 20)), // new connections per IP per minute
     trustProxy: bool(env.TRUST_PROXY, false), // take the client IP from X-Forwarded-For / X-Real-IP (behind Caddy)
     metricsToken: env.METRICS_TOKEN || '', // optional bearer token for /metrics
+    adminPasswordHash: env.ADMIN_PASSWORD_HASH || '', // optional self-admin; scrypt verifier only
     // key for the daily-rotating IP tags in logs (src/privacy.js). Without it: random per process start. Never logged.
     ipHashSecret: env.IP_HASH_SECRET || crypto.randomBytes(32).toString('hex'),
     logRetentionDays: Math.max(1, int(env.LOG_RETENTION_DAYS, 30)), // security_log rows
@@ -50,7 +51,7 @@ export function loadConfig(env = process.env) {
     posFlushMs: Math.max(1000, int(env.POS_FLUSH_MS, 10000)),
     transport: env.TRANSPORT || 'auto', // auto | uws | ws
     logLevel: env.LOG_LEVEL || 'info',
-    version: '0.1.0',
+    version: '0.2.0',
   };
 }
 

@@ -11,7 +11,7 @@
 //  - When new data changes the curve, the visual discontinuity is absorbed into an error offset that decays with a
 //    critically damped spring: positions stay continuous, nothing ever snaps. Jumps > 50 m or a server teleport
 //    counter change play a dissolve (scale out at the old place, scale in at the new one) instead of sliding.
-import { wrapAngle, hermite, hermiteVel, hermiteAcc, dampOffset3, lerpAngle } from './interp.js';
+import { wrapAngle, hermite, hermiteVel, hermiteAcc, dampOffset3, dampOffset, lerpAngle } from './interp.js';
 import { drArc } from './shared/dr.js';
 import { F_TPC, REC_FULL, REC_ROT, REC_STEER, REC_TURRET } from './shared/constants.js';
 import { GONE_LEFT as GONE_LEFT_ID } from './shared/protocol.js';
@@ -31,7 +31,7 @@ const ORPHAN_MS = 600; // a "moved to another cell" entity disappears if no othe
 const MAX_SILENCE = [45000, 65000]; // ms without a record before an entity is considered gone (near, far)
 const MAX_EXTRAP = [2600, 5000]; // ms of dead reckoning past the newest record (keyframes every 2 / 4 s when moving)
 const LAT_N = 64;
-const AGE_CAP = 120; // ms of a record's sample age that counts as stream lateness (one 10 Hz send interval + slack)
+const AGE_CAP = 510; // the full representable uplink age: high-ping senders need buffer time as well as receivers
 
 export class RemoteStore {
   constructor({ tickDt = 50, max = 4096 } = {}) {
@@ -69,6 +69,9 @@ export class RemoteStore {
 
   // end-to-end lateness of a record (sender sample → our screen): what the jitter buffer must cover
   _late(late) {
+    if (!this.latN && !this.list.some((e) => e.alpha > .05)) {
+      this.delay = this.target = Math.max(50, late + this.minBuffer); this.warp = 0;
+    }
     this.lat[this.latI] = late;
     this.latI = (this.latI + 1) % LAT_N;
     if (this.latN < LAT_N) this.latN++;
@@ -121,9 +124,10 @@ export class RemoteStore {
       if (!(parts & REC_TURRET)) { rec.turret = 0; rec.barrel = 0; }
     }
     const tt = this.tickTime(tick), t = tt - (rec.age || 0); // the sample's own time
-    // jitter buffer: how late the stream delivers (tick → screen). A record's age beyond one send interval is not
-    // lateness: senders upload on deviation, so an old sample just means it was still exact (dead reckoning) until now.
-    if (this.offset !== undefined) this._late(localNow + this.offset - Math.max(t, tt - AGE_CAP));
+    // Include uplink delay for moving entities. Parked keyframes can carry old
+    // timestamps without indicating latency and should not inflate the buffer.
+    const moving = Math.hypot(rec.vx, rec.vy, rec.vz) > .3;
+    if (this.offset !== undefined) this._late(localNow + this.offset - Math.max(t, tt - (moving ? AGE_CAP : 120)));
     const e = known || this._entity(rec.id);
     if (!e) return;
     if (!known) { e.hasFull = true; e.km = rec.model; e.kf = rec.flags; e.kp = rec.pitch || 0; e.kr = rec.roll || 0; e.ks = rec.steer || 0; }
@@ -198,11 +202,12 @@ export class RemoteStore {
     }
     this.lastOffset = offset;
     dt = Math.min(Math.max(dt, 0), 0.1);
-    // time-warp the delay toward its target: the warp rate itself ramps smoothly (≤ 1 % speed change, eased), so
-    // remote motion never shows a velocity step; jump only when wildly off (start, long stall)
+    // Adapt without rewinding the render clock when Wi-Fi suddenly gets worse.
+    // Large deficits catch up gradually; ordinary jitter stays within 1% speed.
     const diff = this.target - this.delay;
-    if (Math.abs(diff) > 500) { this.delay = this.target; this.warp = 0; } else {
-      const want = Math.max(-10, Math.min(10, diff * 0.8)); // ms of delay change per second (= 1 % at most)
+    {
+      const limit = diff > 250 ? 80 : 10;
+      const want = Math.max(-10, Math.min(limit, diff * 0.8));
       const dw = want - this.warp, maxStep = 15 * dt; // ramp the warp at ≤ 15 ms/s²
       this.warp += Math.max(-maxStep, Math.min(maxStep, dw));
       this.delay += this.warp * dt;
@@ -219,7 +224,8 @@ export class RemoteStore {
         if (e.orphanAt && localNow - e.orphanAt > ORPHAN_MS) e.state = 'out';
         else if (e.n && this.liveT - e.lastT > MAX_SILENCE[e.stream] && rt > e.lastT) e.state = 'out';
       }
-      evaluate(e, rt, prevT, Math.min(stallLimit, e.lastT + MAX_EXTRAP[e.stream]), dt);
+      evaluate(e, rt, prevT, Math.min(stallLimit, e.lastT + MAX_EXTRAP[e.stream]), dt,
+        this.target > 500 || this.delay > 500 || localNow + offset - this.liveT > 500);
       // presence (scale) animation
       if (e.tp) {
         e.tpT += dt;
@@ -366,7 +372,7 @@ function copyAt(a, k, d) {
   _c.turret = a[k + 14]; _c.barrel = a[k + 15];
 }
 
-function evaluate(e, rt, prevT, tx, dt) {
+function evaluate(e, rt, prevT, tx, dt, uncertain = false) {
   const o = e.off;
   // continuity: how much did the curve itself change at the previous render time since last frame (new data)?
   // The position, velocity AND acceleration differences go into the offset filter, so the rendered motion stays
@@ -386,7 +392,13 @@ function evaluate(e, rt, prevT, tx, dt) {
   e.cx = _c.x; e.cy = _c.y; e.cz = _c.z; e.cyaw = _c.yaw; e.hasCurve = true;
   e.cvx = _c.vx; e.cvy = _c.vy; e.cvz = _c.vz; e.cyr = _c.yawRate; e.cax = _c.ax; e.cay = _c.ay; e.caz = _c.az;
   if (e.tp === 1) return; // dissolving out at the old place: keep the old pose
-  for (let i = 0; i < 12; i += 3) dampOffset3(o, i, OMEGA, dt);
+  // Under heavy latency the Hermite acceleration is poorly constrained: feeding
+  // it back into a stiff C2 spring amplifies the arrival burst. Keep C1 continuity
+  // and ease large corrections more slowly instead of racing to the new pose.
+  if (uncertain) {
+    const omega = Math.min(3.5, 18 / Math.max(1, Math.hypot(o[0], o[6])));
+    for (let i = 0; i < 12; i += 3) { dampOffset(o, i, omega, dt); o[i + 2] = 0; }
+  } else for (let i = 0; i < 12; i += 3) dampOffset3(o, i, OMEGA, dt);
   e.x = _c.x + o[0]; e.y = _c.y + o[3]; e.z = _c.z + o[6];
   e.yaw = wrapAngle(_c.yaw + o[9]);
   e.vx = _c.vx + o[1]; e.vy = _c.vy + o[4]; e.vz = _c.vz + o[7];

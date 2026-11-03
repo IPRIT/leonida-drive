@@ -3,6 +3,7 @@
 // is the only writer of the broadcast arena. Readers use a per-slot seqlock, so a torn read is retried next tick.
 import { GRID_CELLS, RADAR_CELLS } from '../../src/net/shared/constants.js';
 import { createQueueShared, queueViews } from './queue.js';
+import { MAP_HEADER, MAP_ENTRY } from '../../src/net/shared/extensions.js';
 
 export const ARENA_BUFFERS = 3; // the hub writes tick T into buffer T % 3, gateways get two ticks of slack
 export const ARENA_MAX_ENTRIES = GRID_CELLS * 2 + RADAR_CELLS + 64;
@@ -38,6 +39,7 @@ export function createShared(maxSlots, workers, arenaBytes = 8 << 20) {
     rot: sab(N * 5 * 4), // yaw, pitch, roll, yawRate, steer
     ext: sab(N * 2 * 4), // turret yaw (relative to the hull), barrel pitch (turret vehicles, flags & F_EXT)
     sampleT: sab(N * 8), // Float64 server ms of the sample
+    receivedT: sab(N * 8), // last upload receipt: connection liveness is independent of uplink latency
     model: sab(N),
     flags: sab(N * 2),
     // ---- info table (gateway → everyone) ----
@@ -74,6 +76,8 @@ export function createShared(maxSlots, workers, arenaBytes = 8 << 20) {
     pulseMsg: sab(16), // latest S_PULSE (sent right after WELCOME)
     densityMsg: sab(1024), // latest S_DENSITY (heatmap), served on request
     densityLen: sab(8),
+    mapMsg: sab(MAP_HEADER + N * MAP_ENTRY),
+    mapMeta: sab(12), // seqlock, length, latest demand tick
     // ---- misc ----
     ipTable: sab(IP_TABLE * 4), // per-IP connection counts (hashed)
     money: sab(MONEY_CAP * 2 * 8), // rank snapshot, two halves
@@ -98,6 +102,7 @@ export function views(s) {
     rot: new Float32Array(s.rot),
     ext: new Float32Array(s.ext),
     sampleT: new Float64Array(s.sampleT),
+    receivedT: new Float64Array(s.receivedT),
     model: new Uint8Array(s.model),
     flags: new Uint16Array(s.flags),
     nick: new Uint32Array(s.nick),
@@ -130,6 +135,8 @@ export function views(s) {
     pulseMsg: new Uint8Array(s.pulseMsg),
     densityMsg: new Uint8Array(s.densityMsg),
     densityLen: new Int32Array(s.densityLen),
+    mapMsg: new Uint8Array(s.mapMsg),
+    mapMeta: new Int32Array(s.mapMeta),
     ipTable: new Int32Array(s.ipTable),
     money: new Float64Array(s.money),
     moneyHdr: new Int32Array(s.moneyHdr),

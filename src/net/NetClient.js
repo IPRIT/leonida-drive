@@ -17,6 +17,7 @@ import { RadarTracks } from './RadarTracks.js';
 import { nickName } from './shared/nicknames.js';
 import { ClockSync } from './ClockSync.js';
 import { itemOfCode, lookOfCodes } from './shared/outfit-codes.js';
+import { S_FEATURES, S_MAP, S_ADMIN, C_ADMIN, FEATURE, MAP_ORDER, MAP_HEADER, MAP_ENTRY, readMapEntry, readJson, jsonMessage } from './shared/extensions.js';
 
 const TOKEN_KEY = 'leonida.mp.token';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
@@ -79,6 +80,9 @@ export class NetClient {
     this.modelIndex = new Map(); // catalog id → index
     this.radar = { n: 0, total: 0, x: new Float32Array(256), z: new Float32Array(256), color: new Uint8Array(256), yaw: new Float32Array(256), vclass: new Uint8Array(256), t: 0 };
     this.tracks = new RadarTracks(); // smooth minimap blips for players outside the interest rings
+    this.features = 0; this.mapWanted = false; this.mapNext = 0; this.mapAskAt = -1e12;
+    this.adminId = 0; this.adminUntil = 0; this.adminWait = new Map();
+    this.mapSeen = new Set(); this.mapEpoch = -1; this.mapTotal = 0;
     this.density = null;
     this.infoQueue = new Set();
     this.radarInfoQueue = new Set();
@@ -152,6 +156,8 @@ export class NetClient {
   }
 
   _onClose() {
+    this._clearAdmin();
+    this.link?.clear();
     this.ws = null;
     clearTimeout(this._welcomeTimer);
     const wasOnline = this.status === 'online';
@@ -190,6 +196,8 @@ export class NetClient {
   }
 
   close() {
+    this._clearAdmin();
+    this.link?.clear();
     clearTimeout(this._timer);
     clearTimeout(this._welcomeTimer);
     this.status = 'kicked';
@@ -213,24 +221,40 @@ export class NetClient {
     if (!ws || ws.readyState !== 1 || !this.welcome || ws.bufferedAmount > 32 << 10) return false;
     if (s.ext) {
       writeState(this.stateExtDV, s);
-      ws.send(this.stateExtBuf);
+      if (this.link?.active) this.link.outgoing(this.stateExtBuf.slice(0), (b) => { if (this.ws === ws && ws.readyState === 1 && this.welcome) ws.send(b); });
+      else ws.send(this.stateExtBuf);
       this.bytesOut += STATE_EXT_SIZE;
       return true;
     }
     writeState(this.stateDV, s);
-    ws.send(this.stateBuf);
+    if (this.link?.active) this.link.outgoing(this.stateBuf.slice(0), (b) => { if (this.ws === ws && ws.readyState === 1 && this.welcome) ws.send(b); });
+    else ws.send(this.stateBuf);
     this.bytesOut += STATE_SIZE;
     return true;
   }
 
   // ---------------- receive ----------------
-  _onMessage(ab, now = performance.now()) {
+  _onMessage(ab, now = performance.now(), simulated = false) {
     if (!(ab instanceof ArrayBuffer) || ab.byteLength < 1) return;
+    if (!simulated && this.link?.active && [S_CELL, S_RADAR, S_MAP].includes(new Uint8Array(ab)[0])) {
+      this.link.incoming(ab, (b) => this._onMessage(b, performance.now(), true)); return;
+    }
     this.bytesIn += ab.byteLength;
     const dv = new DataView(ab);
     const type = dv.getUint8(0);
     try {
       switch (type) {
+        case S_FEATURES: this.features = readJson(dv)?.bits || 0; this._emit('features', this.features); break;
+        case S_MAP: this._map(dv, now); break;
+        case S_ADMIN: {
+          const r = readJson(dv);
+          if (!r) break;
+          if (r.ok && Number.isFinite(r.ttl)) this.adminUntil = now + r.ttl * 1000;
+          if (r.reason === 'auth') this.adminUntil = 0;
+          this.adminWait.get(r.id)?.(r); this.adminWait.delete(r.id);
+          this._emit('admin', { ok: !!r.ok, reason: r.reason, ttl: r.ttl });
+          break;
+        }
         case S_CELL: this._cell(dv, now); break;
         case S_TICK: if (this.welcome) { this.lastTick = dv.getUint32(4, true); this.store.arrival(this.lastTick, now, this.clock.synced ? this.clock.offset : undefined); } break;
         case S_PULSE: {
@@ -315,6 +339,7 @@ export class NetClient {
     this.store.selfId = w.netId;
     this.store.clear();
     this.tracks.clear();
+    this.features = 0; this.mapNext = 0; this.mapAskAt = -1e12; this.mapSeen.clear(); this.mapEpoch = -1; this.mapTotal = 0;
     this.radarInfoQueue.clear(); this.radarNames.clear();
     this.clock.reset();
     this.attempt = 0;
@@ -470,9 +495,62 @@ export class NetClient {
   }
 
   // ---------------- per frame ----------------
+  _clearAdmin() {
+    this.adminUntil = 0;
+    for (const resolve of this.adminWait.values()) resolve({ ok: false, reason: 'offline' });
+    this.adminWait.clear();
+  }
+
+  admin(op, values = {}) {
+    if (!this.online) return Promise.resolve({ ok: false, reason: 'offline' });
+    if (!(this.features & FEATURE.ADMIN)) return Promise.resolve({ ok: false, reason: 'disabled' });
+    const id = ++this.adminId;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => { this.adminWait.delete(id); resolve({ ok: false, reason: 'timeout' }); }, 12000);
+      this.adminWait.set(id, (r) => { clearTimeout(timer); resolve(r); });
+      if (!this.send(jsonMessage(C_ADMIN, { ...values, id, op }))) {
+        this.adminWait.get(id)({ ok: false, reason: 'offline' }); this.adminWait.delete(id);
+      }
+    });
+  }
+
+  _map(dv, now) {
+    if (!this.mapWanted || !this.welcome || dv.byteLength < MAP_HEADER) return;
+    const n = dv.getUint16(2, true), total = dv.getUint32(4, true), cursor = dv.getUint32(8, true);
+    const tick = dv.getUint32(12, true), epoch = dv.getUint32(16, true), end = !!dv.getUint8(1);
+    if (dv.byteLength !== MAP_HEADER + n * MAP_ENTRY || total > 131072 || cursor + n > total) return;
+    if (!cursor) { this.mapSeen.clear(); this.mapEpoch = epoch; }
+    else if (epoch !== this.mapEpoch || cursor !== this.mapNext) return;
+    const ts = this.store.tickTime(tick), tNow = this.clock.synced ? this.clock.now(now) : ts;
+    for (let i = 0; i < n; i++) {
+      readMapEntry(dv, MAP_HEADER + i * MAP_ENTRY, _radar);
+      if (_radar.id === this.welcome.netId) continue;
+      this.mapSeen.add(_radar.id);
+      this.tracks.ingest(_radar, ts, tNow, now);
+      const track = this.tracks.byId.get(_radar.id);
+      if (track) track.mapSeen = now;
+    }
+    this.mapNext = end ? 0 : cursor + n; this.mapTotal = total;
+    this.mapAskAt = end ? now : now - 1850;
+    if (end) {
+      for (const t of this.tracks.list) if (t.mapSeen && !this.mapSeen.has(t.id) && !t.wasAnchored) t.gone = true;
+      this._emit('map', { total, at: now });
+    }
+  }
+
+  wantMap(on) {
+    on = !!on;
+    if (on && !this.mapWanted) { this.mapNext = 0; this.mapAskAt = -1e12; }
+    this.mapWanted = on;
+  }
+
   update(dt, now = performance.now()) {
     this.clock.update(dt);
     if (this.status !== 'online') return;
+    if (this.mapWanted && (this.features & FEATURE.MAP) && now - this.mapAskAt >= 2000) {
+      this.mapAskAt = now;
+      this.send(encodeList(MAP_ORDER, 0, this.mapNext));
+    }
     // ping: quickly at first (clock sync), then every 6 s (clock drift is tiny; RTT for the HUD)
     if (now - this.pingT > (this.pings < 6 ? 250 : 6000)) {
       this.pingT = now;

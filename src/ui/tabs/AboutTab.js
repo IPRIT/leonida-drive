@@ -31,8 +31,18 @@ export class AboutTab extends Tab {
         <div class="legal">${['ip', 'assets', 'real', 'privacy', 'age'].map((k) => `<p>${esc(this.t(`legal.${k}`))}</p>`).join('')}
           <p>${esc(this.t('legal.contact', { email: '\u0000' })).replace('\u0000', `<a href="mailto:${CONTACT}">${CONTACT}</a>`)}</p>
           <p><a href="/licenses.txt" target="_blank" rel="noopener noreferrer">${esc(this.t('legal.licenses'))}</a></p></div>
-        <p class="ver">${esc(this.t('about.version', { v: VERSION_LABEL }))}</p>
+        <p class="ver"><button type="button" data-debug-unlock style="all:unset;cursor:pointer" data-nav>${esc(this.t('about.version', { v: VERSION_LABEL }))}</button></p>
       </div>`;
+    this.el.querySelector('[data-debug-unlock]').onclick = async () => {
+      if (this.unlocking) return;
+      const now = performance.now();
+      if (now - (this.tapAt || 0) > 5000) this.taps = 0;
+      this.tapAt = now; this.taps = (this.taps || 0) + 1;
+      if (this.taps < 10) return;
+      this.taps = 0; this.unlocking = true;
+      try { const { installDebug } = await import('../../debug/index.js'); installDebug(this.menu); }
+      finally { this.unlocking = false; }
+    };
   }
 
   // arrows scroll the text

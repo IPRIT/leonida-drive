@@ -1,6 +1,7 @@
 // Protocol-level Node client (tests, load-test bots). Decodes every server message type; keeps the latest record per
 // remote entity. Uses the `ws` package (installed in server/).
 import WebSocket from 'ws';
+import { S_FEATURES, S_ADMIN, S_MAP, readJson } from '../../src/net/shared/extensions.js';
 import {
   HF_TOKEN, HF_RESUME, S_WELCOME, S_CELL, S_GLOBAL, S_RADAR, S_INFO, S_WALLET, S_RANK, S_PONG, S_SPAWN_ACK, S_CORRECTION, S_NICK,
   S_EVENT, S_KICK, S_NOTICE, S_TICK, S_DENSITY, S_ECON, S_OWNED, S_PROGRESS, STATE_SIZE, STATE_EXT_SIZE, S_FX, S_DAMAGE, S_GARAGE, S_LIST, FX,
@@ -86,6 +87,8 @@ export class TestClient {
     const dv = new DataView(ab);
     const type = dv.getUint8(0);
     switch (type) {
+      case S_FEATURES: case S_ADMIN: this._emit(type, readJson(dv)); break;
+      case S_MAP: this._emit(type, dv); break;
       case S_WELCOME: {
         const w = decodeWelcome(dv);
         this.welcome = w;

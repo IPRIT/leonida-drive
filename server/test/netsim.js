@@ -46,7 +46,7 @@ function makeTruth(seconds, teleportAt = -1, crashAt = -1) {
 
 // loss: dropped messages (what a gateway does to a client over its backpressure limit). tcp: the same loss rate as TCP
 // sees it: nothing is dropped, a lost segment is retransmitted ~200 ms later and holds back everything behind it.
-export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed = 1, teleportAt = -1, crashAt = -1, uplink: upMode = 'dev', tcp = false } = {}) {
+export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed = 1, teleportAt = -1, crashAt = -1, uplink: upMode = 'dev', tcp = false, upLatency = 40, downLatency = 45, latencyAt = Infinity, latencyExtra = 0 } = {}) {
   const r = rng(seed);
   const truth = makeTruth(seconds + 1, teleportAt, crashAt);
   const cfg = { tickHz: 20, nearBudget: 16, farBudget: 8 };
@@ -60,8 +60,8 @@ export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed
   const store = new RemoteStore({ tickDt });
   store.setTiming(0, 0);
   const events = []; // network events: { at (local ms), kind, payload }
-  const UP_LAT = 40, DOWN_LAT = 45, CLOCK_OFF = 12345; // client local clock = server + offset error-free here
-  let offMin = Infinity, tpc = 0, lastX = null;
+  const UP_LAT = upLatency, DOWN_LAT = downLatency, CLOCK_OFF = 12345; // client local clock = server + offset error-free here
+  let offMin = Infinity, tpc = 0, lastX = null, lastSample = -1;
   let bytes = 0, records = 0, ups = 0, tcpAt = 0;
   // uplink: client samples its physics every 3rd 60 Hz step (20 Hz) and uploads on deviation (or every sample)
   const uplink = [], st = { y: 2, vy: 0, pitch: 0, roll: 0, steer: 0, model: 1, flags: 0, ext: false, health: 1 };
@@ -71,7 +71,7 @@ export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed
     Object.assign(st, truth(tc / 1000));
     if (upMode === 'dev' && !uplinkDue(lastUp, st, tc - lastUpT)) continue;
     lastUp = rememberUplink(st, lastUp || {}); lastUpT = tc;
-    uplink.push({ tc, recv: tc + UP_LAT + r() * jitter });
+    uplink.push({ tc, recv: tc + UP_LAT + r() * jitter + (tc >= latencyAt * 1000 ? latencyExtra : 0) });
   }
   ups = uplink.length;
   uplink.sort((a, b) => a.recv - b.recv);
@@ -90,11 +90,14 @@ export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed
     const tMs = T * tickDt;
     while (ui < uplink.length && uplink[ui].recv <= tMs) {
       const u = uplink[ui++];
+      if (u.tc <= lastSample) continue; // same stale/reordered sequence rejection as Session
+      lastSample = u.tc;
       const s = truth(u.tc / 1000);
       if (lastX !== null && Math.hypot(s.x - lastX.x, s.z - lastX.z) > 100) tpc = (tpc + 1) & 3; // server-approved jump
       lastX = s;
       // the client is clock-synced (ping/pong), so it stamps samples in server time: the gateway uses them as-is
       writeState(s, Math.min(u.recv, u.tc));
+      v.receivedT[slot] = u.recv;
     }
     const b = hub.step(T, tMs);
     // collect this tick's near-stream messages + heartbeat
@@ -106,7 +109,7 @@ export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed
       if (type !== S_CELL && type !== S_TICK) continue;
       const lost = r() < loss;
       if (lost && !tcp) continue;
-      let at = tMs + DOWN_LAT + r() * jitter;
+      let at = tMs + DOWN_LAT + r() * jitter + (tMs >= latencyAt * 1000 ? latencyExtra : 0);
       if (tcp) { if (lost) at += 200 + r() * 60; at = tcpAt = Math.max(at, tcpAt); } // retransmit, head-of-line blocking
       else if (r() < reorder) at += 20 + r() * 40; // occasionally overtaken by a later message
       events.push({ at, buf: v.arenaData.slice(off, off + len) });
@@ -117,7 +120,7 @@ export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed
   // client: 60 fps render loop with a little frame jitter; deliver messages that arrived before each frame
   let prevT0 = null;
   let ei = 0, t = 0, prev = null, prevV = null, prevT = null, prevTV = null, lastTick = 0;
-  const res = { maxErr: 0, errs: [], maxAcc: 0, accs: [], maxStep: 0, frames: 0, alphaMin: 1, sawDissolve: false, snaps: 0 };
+  const res = { maxErr: 0, errs: [], maxAcc: 0, accs: [], maxStep: 0, frames: 0, alphaMin: 1, sawDissolve: false, snaps: 0, rewinds: 0 };
   const offset = -CLOCK_OFF; // server = local + offset
   while (t < seconds * 1000 - 300) {
     const dtf = 1000 / 60 + (r() - 0.5) * 3;
@@ -137,7 +140,9 @@ export function simulate({ loss = 0, jitter = 0, reorder = 0, seconds = 30, seed
       }
       ei++;
     }
+    const previousRenderTime = store.renderT;
     store.update(local, offset, dtf / 1000);
+    if (previousRenderTime && store.renderT < previousRenderTime) res.rewinds++;
     const e = store.byId.get(netId);
     if (!e || e.alpha < 1 || store.renderT < 2000) { if (e && e.alpha < res.alphaMin) res.alphaMin = e.alpha; if (e?.tp) res.sawDissolve = true; prev = null; prevV = null; prevT = null; prevTV = null; continue; }
     const tr = truth(store.renderT / 1000);

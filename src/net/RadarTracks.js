@@ -44,6 +44,7 @@ export class RadarTracks {
       seen: 0, alpha: 0, gone: false, anchored: false, wasAnchored: false, fresh: true, blip: null,
     };
     t.id = id; t.w = 0; t.ox = t.oz = t.ovx = t.ovz = 0; t.alpha = 0; t.gone = false; t.anchored = t.wasAnchored = false; t.fresh = true;
+    t.mapSeen = 0;
     this.byId.set(id, t);
     this.list.push(t);
     return t;
@@ -76,6 +77,7 @@ export class RadarTracks {
    */
   ingest(e, tSample, tNow, now) {
     const t = this._track(e.id);
+    if (!t.fresh && tSample < t.tb && !t.wasAnchored) return; // a cached world snapshot must not rewind a newer radar sample
     t.color = e.color; t.vclass = e.vclass; t.seen = now; t.gone = false;
     if (t.wasAnchored) return; // the 3D interpolation owns it
     if (t.fresh) t.yaw = e.yaw;
