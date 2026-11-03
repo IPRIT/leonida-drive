@@ -23,14 +23,26 @@ export function headingYaw(obj) {
 }
 
 export function recoverVehicle(game, vehicle) {
-  if (!vehicle?.body) return;
-  const p = vehicle.body.translation();
-  let y = groundY(game, p.x, p.z, p.y);
-  // A recovery stays on the actual deck/road below the car, including stacked
-  // interchanges. Using terrain height alone dropped bridge users into the bay.
-  if (game.roads?.tunnelFloorAt?.(p.x, p.z) == null) y = Math.max(0, y);
-  vehicle.reset(new THREE.Vector3(p.x, y + 0.5, p.z), headingYaw(vehicle.object3d));
-  game.events?.emit?.('vehicle:reset', { vehicle });
+  if (!vehicle?.body) return false;
+  const apply = () => {
+    if (game.player && game.player.controllable !== vehicle) return false;
+    const p = vehicle.body.translation();
+    let y = groundY(game, p.x, p.z, p.y);
+    // Keep the actual supporting deck, including stacked interchanges.
+    if (game.roads?.tunnelFloorAt?.(p.x, p.z) == null) y = Math.max(0, y);
+    vehicle.reset(new THREE.Vector3(p.x, y + 0.5, p.z), headingYaw(vehicle.object3d));
+    game.events?.emit?.('vehicle:reset', { vehicle });
+    return true;
+  };
+  if (game.online && (vehicle.kind === 'plane' || vehicle.kind === 'boat')) {
+    // Craft.reset may move a stranded aircraft/boat to a runway or open water.
+    // Obtain the same server allowance as a garage call before moving it.
+    if (!game.net?.online) return false;
+    const raw = vehicle.color;
+    const color = typeof raw === 'number' ? raw : raw?.getHex?.() ?? vehicle.model?.materials?.paint?.color?.getHex?.() ?? vehicle.model?.look?.color ?? 0;
+    return game.net.requestVehicle(vehicle.catalogId, { color }).then((ok) => ok ? apply() : false).catch(() => false);
+  }
+  return apply();
 }
 
 // Minimal player controller: drive a vehicle or fly the free camera. The characters workstream (D) replaces this

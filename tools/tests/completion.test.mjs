@@ -218,6 +218,22 @@ test('GPS follows a one-way road directly ahead and uses its loop for a destinat
   assert.deepEqual(behind.slice(-4), [0, 0, 20, 0]);
 });
 
+test('online aircraft recovery waits for server approval and never moves an abandoned vehicle', async () => {
+  const { recoverVehicle } = await import('../../src/core/BasicPlayer.js');
+  let moves = 0, approve;
+  const v = { kind: 'plane', catalogId: 'plane_trainer', color: 0x123456,
+    body: { translation: () => ({ x: 0, y: 2, z: 0 }) }, object3d: new THREE.Object3D(), reset: () => moves++ };
+  const game = { online: true, terrain: { heightAt: () => 0 }, player: { controllable: v },
+    net: { online: true, requestVehicle: () => new Promise((r) => { approve = r; }) } };
+  let pending = recoverVehicle(game, v);
+  assert.equal(moves, 0);
+  approve(false); assert.equal(await pending, false); assert.equal(moves, 0);
+  pending = recoverVehicle(game, v); approve(true);
+  assert.equal(await pending, true); assert.equal(moves, 1);
+  pending = recoverVehicle(game, v); game.player.controllable = null; approve(true);
+  assert.equal(await pending, false); assert.equal(moves, 1);
+});
+
 test('GPS cannot turn between stacked roads and reaches the lower level through a real ramp', () => {
   const r = routingFixture();
   assert.ok(r.route(20, 0, 80, 0, 9, 9));

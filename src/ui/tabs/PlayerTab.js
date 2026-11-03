@@ -74,7 +74,7 @@ export class PlayerTab extends Tab {
     this.refresh();
   }
 
-  act(a, el) {
+  async act(a, el) {
     const g = this.game, p = g.player;
     const cap = { refill: 'godMode', money: 'money', repair: 'repair', tp: 'teleport', tpw: 'teleport' }[a];
     if (cap && !this.can(cap)) return;
@@ -102,7 +102,7 @@ export class PlayerTab extends Tab {
         v.repair?.();
         this.ui.feed({ kind: 'garage', icon: 'wrench', text: this.t('notify.repaired'), seconds: 2.5 });
       } else {
-        recoverVehicle(g, v);
+        if (!await recoverVehicle(g, v)) return;
         this.ui.feed({ kind: 'garage', icon: 'auto', text: this.t('notify.reset'), seconds: 2.5 });
       }
       return;
