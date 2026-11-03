@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Leonida — world lab</title></head>
+<body style="margin:0;background:#000">
+  <div id="app" style="position:fixed;inset:0"></div>
+  <script type="module">
+    import { createGame } from '/src/core/bootstrap.js';
+    createGame(document.getElementById('app'), { autostart: true, noUI: true, noPeds: false });
+  </script>
+</body>
+</html>

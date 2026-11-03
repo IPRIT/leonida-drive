@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — Life Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f14; }
+    #app { position: fixed; inset: 0; }
+    #lifelab { position: fixed; right: 12px; top: 12px; width: 286px; max-height: calc(100% - 24px); overflow: auto; z-index: 50; color: #eef1f5;
+      font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(10, 12, 18, 0.74); border-radius: 10px;
+      padding: 10px 12px; backdrop-filter: blur(5px); user-select: none; }
+    #lifelab.min > :not(h3) { display: none; }
+    #lifelab h3 { margin: 0 0 6px; font: italic 700 15px Futura, 'Trebuchet MS', sans-serif; letter-spacing: 2px; cursor: pointer;
+      background: linear-gradient(90deg, #ff4fa3, #29f0e0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #lifelab h4 { margin: 8px 0 3px; font-size: 11px; color: #ff7ab8; letter-spacing: 1px; text-transform: uppercase; }
+    #lifelab .stats { white-space: pre; color: #9fe; font-size: 11px; }
+    #lifelab button { display: inline-block; margin: 2px 2px 0 0; padding: 4px 7px; border: 0; border-radius: 5px; cursor: pointer;
+      background: rgba(255,255,255,0.09); color: #fff; font: inherit; }
+    #lifelab button:hover { background: rgba(255, 79, 163, 0.45); }
+    #lifelab .row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    #lifelab .row input { flex: 1; }
+    #lifelab .hint { color: #8a9aab; font-size: 10.5px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="lifelab"><h3>LIFE LAB</h3><div class="stats">loading…</div></div>
+  <script type="module" src="/src/life/lab-life.js"></script>
+</body>
+</html>

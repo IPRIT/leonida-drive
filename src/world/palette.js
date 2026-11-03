@@ -1,0 +1,25 @@
+// Ground class palette (index = ground class id from tools/export.py), sRGB hex.
+export const GROUND_PALETTE = [
+  0xd8c9a0, // 0 water (seabed sand)
+  0xeadcae, // 1 sand
+  0x789a4a, // 2 grass
+  0x5a9040, // 3 park
+  0x6b8f55, // 4 wetland
+  0x8fa650, // 5 farm
+  0xb8a073, // 6 dirt / industrial ground
+  0xaaa69c, // 7 urban concrete
+  0xc1beb5, // 8 light concrete pads / plazas (source-map pale grey)
+  0xa29c90, // 9 building footprint
+  0x4a4b4f, // 10 road bed
+  0x6cb34a, // 11 sport fields
+];
+
+// Vice City flavoured building colours
+export const ARTDECO = [0xf7a8c4, 0x9fe3d6, 0xfde59a, 0xc8b6f2, 0xffc9a3, 0xa7d8f5, 0xffffff, 0xf3d1e0];
+export const STUCCO = [0xeee6d8, 0xe8dcc4, 0xd9cbb2, 0xf2eee6, 0xe3d3c0, 0xd6d0c4, 0xc9c2b4, 0xefe2cf];
+export const GLASS = [0x5f8fb0, 0x6fa7bf, 0x4f7896, 0x86b3c9, 0x3f6d8c, 0x9cc0cf];
+export const CONCRETE = [0xcfcac0, 0xb9b4aa, 0xd8d4cc, 0xc4bdb0, 0xe0dbd0];
+export const HOUSE = [0xf2e4c8, 0xe9d3b0, 0xf6f0e4, 0xdde9e4, 0xf4d9d0, 0xe6e0f0, 0xfff1d6, 0xd8e6f2];
+export const ROOF = [0xb5523b, 0x9c4632, 0x8a8a8a, 0x6f6f72, 0xc7643f, 0x5d6e7c];
+export const INDUSTRIAL = [0xb8b3a8, 0xa5a9ad, 0xc2b79e, 0x9aa0a6, 0xd0c8b8];
+export const NEON = [0xff3fa4, 0x29f0e0, 0xb04dff, 0xff8a3d, 0x4dd2ff];

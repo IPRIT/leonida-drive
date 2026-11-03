@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — Vehicles Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f14; }
+    #app { position: fixed; inset: 0; }
+    #vlab { position: fixed; right: 0; top: 0; bottom: 0; width: 330px; z-index: 50; display: flex; flex-direction: column; background: rgba(12, 14, 20, 0.86); color: #e9edf3; font: 12px/1.35 system-ui, -apple-system, Segoe UI, sans-serif; backdrop-filter: blur(6px); border-left: 1px solid rgba(255, 255, 255, 0.08); }
+    #vlab header { padding: 10px 12px 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    #vlab header b { font-size: 14px; letter-spacing: 1px; flex: 1; }
+    #vlab button { background: rgba(255, 255, 255, 0.08); color: #e9edf3; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 4px 8px; cursor: pointer; font: inherit; }
+    #vlab button.on { background: #ff4fa3; border-color: #ff4fa3; color: #fff; }
+    #vlab .vl-cats { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px 8px; }
+    #vlab .vl-cats button { padding: 2px 7px; font-size: 11px; }
+    #vlab input { margin: 0 12px 8px; padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.3); color: #fff; font: inherit; }
+    #vlab .vl-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; gap: 6px; align-content: start; min-height: 0; }
+    #vlab .vl-card { position: relative; border-radius: 8px; background: linear-gradient(160deg, #262a33, #1a1d24); cursor: pointer; overflow: hidden; border: 1px solid transparent; }
+    #vlab .vl-card:hover { border-color: rgba(255, 255, 255, 0.25); }
+    #vlab .vl-card.sel { border-color: #ff4fa3; }
+    #vlab .vl-card canvas, #vlab .vl-card .vl-ph { display: block; width: 100%; aspect-ratio: 16 / 9; }
+    #vlab .vl-card .vl-ph { background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.06), transparent 60%); }
+    #vlab .vl-card .vl-nm { padding: 2px 6px 5px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #vlab .vl-card .vl-nm small { color: #8e98a8; }
+    #vlab .vl-info { padding: 8px 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); min-height: 120px; }
+    #vlab .vl-info h3 { margin: 0 0 2px; font-size: 14px; }
+    #vlab .vl-info .vl-tt { width: 100%; height: 150px; border-radius: 8px; background: radial-gradient(ellipse at 50% 70%, #2b303a, #15171c); margin: 6px 0; }
+    #vlab .vl-info .vl-stats { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; color: #b8c2d0; }
+    #vlab .vl-tele { font: 11px ui-monospace, Menlo, monospace; color: #9fd; margin-top: 6px; white-space: pre; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/vehicle/lab-vehicles.js"></script>
+</body>
+</html>

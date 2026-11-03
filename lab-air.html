@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — Air &amp; Sea Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f14; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #app { position: fixed; inset: 0; }
+    #air-lab { position: fixed; left: 10px; top: 10px; z-index: 20; color: #eef; font-size: 12px; background: rgba(10, 12, 20, 0.72); padding: 8px 10px; border-radius: 8px; width: 230px; max-height: calc(100vh - 40px); overflow-y: auto; backdrop-filter: blur(4px); }
+    #air-lab h3 { margin: 8px 0 4px; font-size: 11px; color: #ff7ab8; letter-spacing: 1px; text-transform: uppercase; }
+    #air-lab button { display: block; width: 100%; margin: 2px 0; padding: 4px 6px; font: inherit; color: #fff; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; cursor: pointer; text-align: left; }
+    #air-lab button:hover { background: rgba(255, 79, 163, 0.35); }
+    #air-lab button.on { background: rgba(25, 211, 197, 0.35); }
+    #air-lab .row { display: flex; gap: 4px; }
+    #air-lab .row button { text-align: center; }
+    #air-lab label { display: block; margin: 3px 0; }
+    #air-lab small { color: #9ab; }
+    #air-tele { position: fixed; right: 10px; top: 96px; z-index: 20; color: #f2f2f2; font-size: 12px; line-height: 1.45; background: rgba(10, 12, 20, 0.72); padding: 8px 12px; border-radius: 8px; min-width: 230px; pointer-events: none; white-space: pre; }
+    #air-tele b { color: #19d3c5; }
+    #air-help { position: fixed; left: 50%; transform: translateX(-50%); top: 8px; z-index: 20; color: #dfe6ee; font-size: 11px; background: rgba(10, 12, 20, 0.6); padding: 8px 10px; border-radius: 8px; pointer-events: none; line-height: 1.5; max-width: 420px; }
+    #air-help b { color: #ff7ab8; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="air-lab"></div>
+  <div id="air-tele"></div>
+  <div id="air-help"></div>
+  <script type="module" src="/src/air/lab-air.js"></script>
+</body>
+</html>

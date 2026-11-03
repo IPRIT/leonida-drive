@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — UI lab</title>
+  <style>
+    #lab { position: fixed; z-index: 100; left: 50%; top: 4px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+      max-width: 96vw; padding: 5px 8px; background: rgba(10, 10, 14, .88); border: 1px solid #333; font: 12px/1.2 system-ui, sans-serif; color: #ddd; direction: ltr; }
+    #lab button, #lab select { font: inherit; background: #222; color: #eee; border: 1px solid #444; padding: 3px 7px; cursor: pointer; }
+    #lab button:hover { background: #333; }
+    #lab .sep { width: 1px; height: 18px; background: #444; margin: 0 3px; }
+    #lab .perf { min-width: 140px; color: #9f9; font-variant-numeric: tabular-nums; }
+    #lab.min > :not(.toggle) { display: none; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/ui/lab-ui.js"></script>
+</body>
+</html>

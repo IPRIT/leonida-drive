@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#000000" />
+  <title>Leonida — mobile lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    #app { position: fixed; inset: 0; }
+    #mlab { position: fixed; z-index: 40; left: 50%; top: calc(4px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #e8eef5; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+    #mlab > * { pointer-events: auto; }
+    #mlab-toggle { font: inherit; color: #fff; background: rgba(10, 12, 18, .7); border: 1px solid #3d465c; border-radius: 12px; padding: 3px 10px; }
+    #mlab-panel { display: none; background: rgba(10, 12, 18, .82); padding: 6px; border-radius: 8px; max-width: min(560px, 92vw); }
+    #mlab.open #mlab-panel { display: block; }
+    #mlab-panel .b { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+    #mlab-panel button { font: inherit; color: #fff; background: #2a3040; border: 1px solid #3d465c; border-radius: 4px; padding: 4px 7px; }
+    #mlab-panel button:active { background: #ff3fa4; }
+    #mlab-stats { white-space: pre; margin: 0; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="mlab"><button id="mlab-toggle" type="button">LAB</button><div id="mlab-panel"><div class="b" id="mlab-btns"></div><pre id="mlab-stats">loading…</pre></div></div>
+  <script type="module" src="/src/mobile/lab-mobile.js"></script>
+</body>
+</html>

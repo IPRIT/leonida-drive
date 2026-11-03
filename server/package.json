@@ -1,0 +1,18 @@
+{
+  "name": "leonida-mp-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "bench": "node bench/tick-bench.js"
+  },
+  "dependencies": {
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.66.0",
+    "ws": "^8.22.1"
+  }
+}

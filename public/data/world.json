@@ -1,0 +1,609 @@
+{
+"bounds": [
+-9216.0,
+-9216.0,
+4096.0,
+9728.0
+],
+"hs": 8.0,
+"gw": 1664,
+"gh": 2368,
+"ts": 4.0,
+"tw": 3328,
+"th": 4736,
+"ground": {
+"water": 0,
+"sand": 1,
+"grass": 2,
+"park": 3,
+"wetland": 4,
+"farm": 5,
+"dirt": 6,
+"urban": 7,
+"paved": 8,
+"building": 9,
+"road": 10,
+"sport": 11
+},
+"districts": [
+{
+"name": "Washington Beach",
+"area": "Vice Beach",
+"type": "d",
+"x": 1750,
+"z": -2172,
+"r": 709,
+"n": 42
+},
+{
+"name": "Vice Beach",
+"area": "",
+"type": "a",
+"x": 1685,
+"z": -1129,
+"r": 1397,
+"n": 514
+},
+{
+"name": "Ocean Beach",
+"area": "Vice Beach",
+"type": "d",
+"x": 1728,
+"z": -733,
+"r": 856,
+"n": 358
+},
+{
+"name": "Port Gellhorn",
+"area": "",
+"type": "a",
+"x": -6485,
+"z": -3717,
+"r": 1347,
+"n": 194
+},
+{
+"name": "Vice-Dale County",
+"area": "",
+"type": "a",
+"x": 485,
+"z": -184,
+"r": 2500,
+"n": 44
+},
+{
+"name": "Dalton Island",
+"area": "",
+"type": "a",
+"x": 1724,
+"z": 1392,
+"r": 476,
+"n": 38
+},
+{
+"name": "Gloriana Key",
+"area": "",
+"type": "a",
+"x": 571,
+"z": 1497,
+"r": 697,
+"n": 52
+},
+{
+"name": "Catalan Key",
+"area": "",
+"type": "a",
+"x": -214,
+"z": 1890,
+"r": 745,
+"n": 34
+},
+{
+"name": "Tequesta Retreat",
+"area": "Vice City",
+"type": "d",
+"x": -209,
+"z": 1083,
+"r": 293,
+"n": 17
+},
+{
+"name": "Vice City",
+"area": "",
+"type": "a",
+"x": -1114,
+"z": 5,
+"r": 2331,
+"n": 1124
+},
+{
+"name": "Port Vice City",
+"area": "",
+"type": "a",
+"x": 882,
+"z": 468,
+"r": 813,
+"n": 26
+},
+{
+"name": "Rialto Islands",
+"area": "",
+"type": "a",
+"x": 504,
+"z": -1249,
+"r": 498,
+"n": 76
+},
+{
+"name": "Waning Sands",
+"area": "",
+"type": "a",
+"x": 48,
+"z": -4048,
+"r": 664,
+"n": 61
+},
+{
+"name": "Leonard County",
+"area": "",
+"type": "a",
+"x": -571,
+"z": -3171,
+"r": 2500,
+"n": 44
+},
+{
+"name": "Belville",
+"area": "",
+"type": "a",
+"x": -1235,
+"z": -2841,
+"r": 862,
+"n": 15
+},
+{
+"name": "Vice Decor District",
+"area": "Vice City",
+"type": "d",
+"x": -220,
+"z": -2165,
+"r": 228,
+"n": 36
+},
+{
+"name": "La Perle",
+"area": "Vice City",
+"type": "d",
+"x": -914,
+"z": -1493,
+"r": 489,
+"n": 57
+},
+{
+"name": "Crosstown",
+"area": "Vice City",
+"type": "d",
+"x": -646,
+"z": -1176,
+"r": 548,
+"n": 97
+},
+{
+"name": "Stockyard",
+"area": "Vice City",
+"type": "d",
+"x": -352,
+"z": -1792,
+"r": 200,
+"n": 47
+},
+{
+"name": "Bayside",
+"area": "Vice City",
+"type": "d",
+"x": -357,
+"z": -994,
+"r": 496,
+"n": 39
+},
+{
+"name": "Shoreline",
+"area": "Vice City",
+"type": "d",
+"x": -253,
+"z": -137,
+"r": 416,
+"n": 15
+},
+{
+"name": "Downtown",
+"area": "Vice City",
+"type": "d",
+"x": -634,
+"z": 152,
+"r": 630,
+"n": 139
+},
+{
+"name": "Rockridge",
+"area": "Vice City",
+"type": "d",
+"x": -1245,
+"z": -814,
+"r": 350,
+"n": 91
+},
+{
+"name": "Balsero",
+"area": "Vice City",
+"type": "d",
+"x": -1791,
+"z": -610,
+"r": 409,
+"n": 53
+},
+{
+"name": "Little Cuba",
+"area": "Vice City",
+"type": "d",
+"x": -1194,
+"z": -60,
+"r": 318,
+"n": 72
+},
+{
+"name": "Salton",
+"area": "Vice City",
+"type": "d",
+"x": -1419,
+"z": 566,
+"r": 788,
+"n": 150
+},
+{
+"name": "Vice City International Airport",
+"area": "",
+"type": "a",
+"x": -2146,
+"z": 724,
+"r": 1019,
+"n": 43
+},
+{
+"name": "Tequesta",
+"area": "Vice City",
+"type": "d",
+"x": -904,
+"z": 1129,
+"r": 471,
+"n": 72
+},
+{
+"name": "Peacock Bay",
+"area": "Vice City",
+"type": "d",
+"x": -1204,
+"z": 1884,
+"r": 415,
+"n": 80
+},
+{
+"name": "Southside",
+"area": "Vice City",
+"type": "d",
+"x": -1777,
+"z": 2059,
+"r": 389,
+"n": 100
+},
+{
+"name": "Mariana County",
+"area": "",
+"type": "a",
+"x": -4161,
+"z": 4512,
+"r": 2500,
+"n": 104
+},
+{
+"name": "Peregrine Bay",
+"area": "",
+"type": "a",
+"x": -1569,
+"z": 3543,
+"r": 972,
+"n": 15
+},
+{
+"name": "Hamlet",
+"area": "",
+"type": "a",
+"x": -2683,
+"z": 3241,
+"r": 534,
+"n": 175
+},
+{
+"name": "Bluegrass",
+"area": "",
+"type": "a",
+"x": -2514,
+"z": 2423,
+"r": 471,
+"n": 18
+},
+{
+"name": "Key Lento",
+"area": "",
+"type": "a",
+"x": -2482,
+"z": 5872,
+"r": 937,
+"n": 195
+},
+{
+"name": "Kelly County",
+"area": "",
+"type": "a",
+"x": -4862,
+"z": -3638,
+"r": 2500,
+"n": 79
+},
+{
+"name": "Goose Key",
+"area": "",
+"type": "a",
+"x": -6422,
+"z": 6381,
+"r": 426,
+"n": 5
+},
+{
+"name": "Starfish Island",
+"area": "",
+"type": "a",
+"x": 795,
+"z": -465,
+"r": 252,
+"n": 10
+},
+{
+"name": "Watson Bay",
+"area": "",
+"type": "a",
+"x": -4982,
+"z": 3360,
+"r": 500,
+"n": 61
+},
+{
+"name": "Allied Crystal",
+"area": "Ambrosia",
+"type": "d",
+"x": -2911,
+"z": -3652,
+"r": 396,
+"n": 42
+},
+{
+"name": "Ambrosia",
+"area": "",
+"type": "a",
+"x": -2769,
+"z": -3882,
+"r": 893,
+"n": 90
+},
+{
+"name": "Leaf Links",
+"area": "Vice Beach",
+"type": "d",
+"x": 381,
+"z": -2421,
+"r": 408,
+"n": 15
+},
+{
+"name": "Catalan Bay",
+"area": "",
+"type": "a",
+"x": 119,
+"z": -1686,
+"r": 1134,
+"n": 4
+},
+{
+"name": "Lummox County",
+"area": "",
+"type": "a",
+"x": -3109,
+"z": -6994,
+"r": 2500,
+"n": 64
+},
+{
+"name": "Leonida",
+"area": "",
+"type": "a",
+"x": -2842,
+"z": -1694,
+"r": 2500,
+"n": 19
+},
+{
+"name": "Capri",
+"area": "",
+"type": "a",
+"x": -6642,
+"z": 4,
+"r": 807,
+"n": 74
+},
+{
+"name": "Prison",
+"area": "Hamlet",
+"type": "d",
+"x": -2673,
+"z": 2844,
+"r": 303,
+"n": 10
+},
+{
+"name": "Gellhorn International Raceway",
+"area": "",
+"type": "a",
+"x": -6566,
+"z": -2022,
+"r": 1062,
+"n": 64
+},
+{
+"name": "Emerald Springs",
+"area": "",
+"type": "a",
+"x": -4299,
+"z": -2353,
+"r": 890,
+"n": 5
+},
+{
+"name": "Buckskin",
+"area": "",
+"type": "a",
+"x": -4118,
+"z": -902,
+"r": 200,
+"n": 8
+},
+{
+"name": "Millport",
+"area": "",
+"type": "a",
+"x": -1040,
+"z": -6489,
+"r": 649,
+"n": 9
+},
+{
+"name": "La Perle",
+"area": "",
+"type": "a",
+"x": -1050,
+"z": -1393,
+"r": 387,
+"n": 5
+},
+{
+"name": "Peacock Bay",
+"area": "",
+"type": "a",
+"x": -1235,
+"z": 1767,
+"r": 200,
+"n": 4
+},
+{
+"name": "Yorktown",
+"area": "",
+"type": "a",
+"x": -5641,
+"z": -6879,
+"r": 200,
+"n": 6
+}
+],
+"landmarks": [
+{
+"name": "Starlet Motel Sign",
+"x": -5313.5,
+"z": -3513,
+"real": "Dixie Motel"
+},
+{
+"name": "Palaestra Tower",
+"x": -452.2,
+"z": -678.0,
+"real": "Sears Tower"
+},
+{
+"name": "Vice City Sign",
+"x": -3770.5,
+"z": 458.1,
+"real": "Ficticious Miami Sign"
+},
+{
+"name": "Evergreen Mall Sign",
+"x": -556.1,
+"z": -4068.9,
+"real": "Bayfair Center San Leandro"
+},
+{
+"name": "Submerged Tank",
+"x": 2558.8,
+"z": -2094.8,
+"real": "RW65+FMG Miami Beach"
+},
+{
+"name": "Sculpture",
+"x": -301.0,
+"z": 346.2,
+"real": "QRG7+68R Miami"
+},
+{
+"name": "Welcome to Port Gellhorn Sign",
+"x": -6293.0,
+"z": -2851.5,
+"real": ""
+},
+{
+"name": "Wonder Whale?",
+"x": -2940.9,
+"z": 6437.8,
+"real": "Lobster Statue"
+},
+{
+"name": "Lighthouse",
+"x": -398.4,
+"z": 2851.2,
+"real": "Cape Florida Light"
+},
+{
+"name": "Gellhorn Roadhouse Sign",
+"x": -6288.0,
+"z": -3921.9,
+"real": ""
+},
+{
+"name": "Welcome Sign",
+"x": -6466.5,
+"z": 341.2,
+"real": "Welcome To Naples Sign"
+},
+{
+"name": "\"Welcome to Hamlet\" Sign",
+"x": -2221.1,
+"z": 3214.9,
+"real": ""
+},
+{
+"name": "Key Lento Sign",
+"x": -2055.2,
+"z": 5411.0,
+"real": "Key Largo Sign"
+},
+{
+"name": "\"Welcome to Hamlet\" Sign",
+"x": -2279.6,
+"z": 3210.1,
+"real": ""
+},
+{
+"name": "\"Welcome to The Keys\" Sign",
+"x": -2123.8,
+"z": 5181.9,
+"real": "Key Largo Sign"
+}
+],
+"source": "State of Leonida community map (YANIS v17.0, map.stateofleonida.net) + GTADB landmarks"
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>landmarks plan</title></head>
+<body style="margin:0;background:#222;color:#eee;font:12px monospace">
+<canvas id="c"></canvas>
+<script type="module">
+// Dev-only top-down plan of an area: ground classes, roads (airside highlighted), building footprints with ids, POIs.
+// ?x=&z=&size=&px=  ?sink=5391&name=foo uploads a PNG.
+const qs = new URLSearchParams(location.search);
+const X = +(qs.get('x') ?? -2300), Z = +(qs.get('z') ?? 700), S = +(qs.get('size') ?? 2400), PX = +(qs.get('px') ?? 1600);
+const minA = +(qs.get('mina') ?? 300);
+const c = document.getElementById('c'); c.width = c.height = PX;
+const g = c.getContext('2d');
+const k = PX / S;
+const tx = (x) => (x - (X - S / 2)) * k, tz = (z) => (z - (Z - S / 2)) * k;
+async function gun(url) {
+  const b = await (await fetch(url)).arrayBuffer();
+  const u = new Uint8Array(b);
+  if (u[0] !== 0x1f) return b;
+  return await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+const [world, roads, blds, lm, ground] = await Promise.all([
+  fetch('/data/world.json').then((r) => r.json()), fetch('/data/roads.json').then((r) => r.json()),
+  fetch('/data/buildings.json').then((r) => r.json()), fetch('/tools/cache/data/landmarks.json').then((r) => r.json()).catch(() => ({})),
+  gun('/data/ground.bin'),
+]);
+const PAL = [0x2a4a6a, 0xeadcae, 0x789a4a, 0x5a9040, 0x6b8f55, 0x8fa650, 0xb8a073, 0xaaa69c, 0x5f6064, 0xa29c90, 0x4a4b4f, 0x6cb34a];
+const gt = new Uint8Array(ground), [wx0, wz0] = world.bounds, ts = world.ts, tw = world.tw;
+const img = g.createImageData(PX, PX);
+for (let j = 0; j < PX; j++) for (let i = 0; i < PX; i++) {
+  const x = X - S / 2 + (i + 0.5) / k, z = Z - S / 2 + (j + 0.5) / k;
+  const gi = Math.floor((x - wx0) / ts), gj = Math.floor((z - wz0) / ts);
+  const cl = gi >= 0 && gj >= 0 && gi < tw && gj < world.th ? gt[gj * tw + gi] : 0;
+  const col = PAL[cl] ?? 0xff00ff, o = (j * PX + i) * 4;
+  img.data[o] = (col >> 16) & 255; img.data[o + 1] = (col >> 8) & 255; img.data[o + 2] = col & 255; img.data[o + 3] = 255;
+}
+g.putImageData(img, 0, 0);
+// roads
+g.lineCap = 'round'; g.lineJoin = 'round';
+for (const e of roads.edges) {
+  const p = e.p;
+  let inside = false;
+  for (let i = 0; i < p.length; i += 2) if (Math.abs(p[i] - X) < S && Math.abs(p[i + 1] - Z) < S) { inside = true; break; }
+  if (!inside) continue;
+  g.strokeStyle = e.w >= 30 ? '#303034' : e.k === 'highway' ? '#d8d8dc' : e.k === 'dirt' ? '#80745f' : '#b0b2b6';
+  g.lineWidth = Math.max(1, e.w * k);
+  g.beginPath();
+  for (let i = 0; i < p.length; i += 2) g[i ? 'lineTo' : 'moveTo'](tx(p[i]), tz(p[i + 1]));
+  g.stroke();
+  if (e.w >= 30) { g.strokeStyle = '#ffffff'; g.lineWidth = 1; g.stroke(); }
+}
+// buildings
+const COL = ['#e8dcc8', '#f7a8c4', '#6fa7bf', '#f2e4c8', '#c2b79e', '#cfcac0'];
+g.font = '11px monospace';
+const labels = [];
+blds.forEach((o, id) => {
+  const p = o.p;
+  let cx = 0, cz = 0, n = p.length / 2;
+  for (let i = 0; i < p.length; i += 2) { cx += p[i]; cz += p[i + 1]; }
+  cx /= n; cz /= n;
+  if (Math.abs(cx - X) > S / 2 + 200 || Math.abs(cz - Z) > S / 2 + 200) return;
+  let A = 0;
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; A += p[i * 2] * p[j * 2 + 1] - p[j * 2] * p[i * 2 + 1]; }
+  A = Math.abs(A) / 2;
+  g.fillStyle = COL[o.s] || '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1;
+  g.beginPath();
+  for (let i = 0; i < p.length; i += 2) g[i ? 'lineTo' : 'moveTo'](tx(p[i]), tz(p[i + 1]));
+  g.closePath(); g.fill(); g.stroke();
+  if (A >= minA) labels.push([tx(cx), tz(cz), `${id} h${Math.round(o.h)}${o.n ? ' ' + o.n.slice(0, 18) : ''}`]);
+});
+for (const [x, y, t] of labels) { g.fillStyle = '#000'; g.fillText(t, x - 19, y + 4); g.fillStyle = '#ff0'; g.fillText(t, x - 20, y + 3); }
+// POIs
+for (const [key, v] of Object.entries(lm)) {
+  if (!v[1] || v[1].length < 2) continue;
+  const x = v[1][0], z = -v[1][1];
+  if (Math.abs(x - X) > S / 2 || Math.abs(z - Z) > S / 2) continue;
+  g.fillStyle = '#f0f'; g.beginPath(); g.arc(tx(x), tz(z), 4, 0, 7); g.fill();
+  const nm = (v[0].split(',')[0] === '?' ? (v[3] || '').split(',')[0] : v[0].split(',')[0]).slice(0, 26);
+  g.fillStyle = '#000'; g.fillText(`${key} ${nm}`, tx(x) + 6, tz(z) - 4); g.fillStyle = '#f8f'; g.fillText(`${key} ${nm}`, tx(x) + 5, tz(z) - 5);
+}
+// scale bar
+g.fillStyle = '#fff'; g.fillRect(10, PX - 20, 100 * k, 4); g.fillText('100 m', 10, PX - 26);
+g.fillText(`centre ${X},${Z} size ${S}`, 10, 14);
+if (qs.get('sink')) {
+  const url = c.toDataURL('image/png');
+  await fetch(`http://127.0.0.1:${qs.get('sink')}/${qs.get('name') || 'plan'}.png`, { method: 'POST', body: url });
+  document.title = 'done';
+}
+</script></body></html>

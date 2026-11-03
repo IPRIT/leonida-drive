@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — Weather Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f14; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #app { position: fixed; inset: 0; }
+    #wx { position: fixed; right: 10px; top: 10px; width: 300px; max-height: calc(100% - 20px); overflow: auto; z-index: 50;
+      background: rgba(10, 12, 18, 0.78); color: #e8edf3; font-size: 11px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; backdrop-filter: blur(6px); }
+    #wx.min > :not(.head) { display: none; }
+    #wx h3 { margin: 8px 0 4px; font-size: 11px; color: #ff7ab8; letter-spacing: 1px; text-transform: uppercase; }
+    #wx .head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #19d3c5; }
+    #wx button { background: rgba(255,255,255,0.08); color: #e8edf3; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 2px 6px; margin: 2px 2px 0 0; font: inherit; cursor: pointer; }
+    #wx button.on { background: #ff4fa3; border-color: #ff4fa3; color: #fff; }
+    #wx label { display: inline-flex; align-items: center; gap: 3px; margin: 2px 8px 0 0; cursor: pointer; }
+    #wx input[type=range] { width: 100%; }
+    #wx .row { display: flex; gap: 6px; align-items: center; }
+    #wx .stat { white-space: pre; color: #bcd; font-size: 10.5px; }
+    #wx .muted { color: #8a9aab; }
+    body.nohud #app > *:not(canvas) { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="wx"></div>
+  <script type="module" src="/src/weather/lab-weather.js"></script>
+</body>
+</html>

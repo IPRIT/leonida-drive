@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Leonida — multiplayer lab</title></head>
+<body style="margin:0;background:#000">
+  <div id="app" style="position:fixed;inset:0"></div>
+  <div id="netstat" style="position:fixed;left:8px;bottom:8px;z-index:30;font:12px/1.35 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:4px;white-space:pre;pointer-events:none"></div>
+  <script type="module">
+    // Multiplayer lab. Start the server (cd server && npm start) and some bots near the spawn:
+    //   node tools/loadtest/bots.js --count 30 --cx 1745 --cz -640 --radius 250
+    // P / Shift+P  spectate remote players / back to yourself
+    // ?ui      full HUD + menus (default: lab UI only)    ?x=&z=  spawn    ?mp=ws://127.0.0.1:8787/ws  server (localhost only)
+    import { createGame } from '/src/core/bootstrap.js';
+    import { netModule, preconnectNet } from '/src/net/index.js';
+    const q = new URLSearchParams(location.search);
+    preconnectNet();
+    const game = await createGame(document.getElementById('app'), {
+      autostart: true,
+      noUI: !q.has('ui'),
+      spawn: { x: Number(q.get('x') ?? 1745), z: Number(q.get('z') ?? -640) },
+      modules: [netModule()],
+    });
+    window.__lab = game;
+    // P: spectate the next remote player (chase camera on its interpolated pose), Shift+P: back to yourself
+    const cam = game.camera, lp = { x: 0, y: 0, z: 0, ok: false };
+    window.__spectate = null;
+    addEventListener('keydown', (e) => {
+      if (e.code !== 'KeyP') return;
+      const list = game.net?.store.list.filter((x) => x.hasCurve) || [];
+      if (e.shiftKey || !list.length) { window.__spectate = null; lp.ok = false; return; }
+      const i = list.findIndex((x) => x.id === window.__spectate);
+      window.__spectate = list[(i + 1) % list.length].id;
+      lp.ok = false;
+    });
+    game.register({
+      lateUpdate(dt) {
+        const e = window.__spectate != null && game.net?.store.byId.get(window.__spectate);
+        if (!e) return;
+        const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
+        const tx = e.x - fx * 9, ty = e.y + 3.6, tz = e.z - fz * 9;
+        const k = lp.ok ? 1 - Math.exp(-dt * 6) : 1;
+        lp.x += (tx - lp.x) * k; lp.y += (ty - lp.y) * k; lp.z += (tz - lp.z) * k; lp.ok = true;
+        cam.position.set(lp.x, lp.y, lp.z);
+        cam.lookAt(e.x + fx * 6, e.y + 1.2, e.z + fz * 6);
+        cam.updateMatrixWorld();
+      },
+    }, 999);
+    const el = document.getElementById('netstat');
+    setInterval(() => {
+      const n = game.net;
+      if (!n) { el.textContent = `mode: ${game.mode} (no net)`; return; }
+      const st = n.store, c = n.client;
+      const veh = st.list.filter((e) => e.model).length, foot = st.list.length - veh;
+      el.textContent = [
+        `net ${c.status}  rtt ${c.clock.rtt.toFixed(0)} ms  in ${c.kbps.toFixed(1)} kbit/s  online ${c.global?.online ?? '-'}`,
+        `remotes ${st.list.length} (vehicles ${veh}, on foot ${foot})  delay ${st.delay.toFixed(0)} ms  jitter ${(st.jitter ?? 0).toFixed(0)} ms`,
+        `records ${st.stats.records}  teleports ${st.stats.teleports}  radar ${c.radar.n}/${c.radar.total}  money ${n.economy.money}  worth ${n.economy.worth}`,
+        `fps ${game.fps}`,
+      ].join('\n');
+    }, 500);
+  </script>
+</body>
+</html>

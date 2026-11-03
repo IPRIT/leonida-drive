@@ -1,0 +1,15 @@
+export { Vehicle, initHeadlightPool } from './Vehicle.js';
+export { VEHICLE_PRESETS, PRESET_ORDER, resolvePreset } from './presets.js';
+export { VEHICLE_CATALOG, getCatalogEntry, CATEGORIES } from './catalog.js';
+export { VehiclePhysics, deriveSpec, DEFAULT_SURFACE } from './physics/VehiclePhysics.js';
+export { EngineAudio } from './EngineAudio.js';
+export { ChaseCamera } from './ChaseCamera.js';
+export { SkidMarks } from './SkidMarks.js';
+export { TireSmoke, SMOKE_PRESETS } from './TireSmoke.js';
+export { DriveInput } from './Input.js';
+export { GROUPS, groups, WHEEL_RAY_MASK } from './groups.js';
+export { buildCarModel } from './CarModel.js';
+export { bakeVehicle } from './bake.js';
+export { renderVehicleThumbnail } from './thumbnail.js';
+export { createThumbnails } from './Thumbnails.js';
+export { Tank, TANK_WEAPON, TANK_ARMOR, TankCamera, Shells, SHELL_BLAST, bakeTank, TANK, playTankWreck } from './tank/index.js';

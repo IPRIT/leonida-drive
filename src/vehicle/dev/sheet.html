@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vehicle design sheet (dev)</title>
+  <style>
+    html, body { margin: 0; background: #2b2f36; color: #ddd; font: 11px ui-monospace, Menlo, monospace; }
+    #grid { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 2px; }
+    .cell { position: relative; aspect-ratio: 4 / 3; background: #3a3f48; }
+    .cell span { position: absolute; left: 4px; top: 3px; color: #fff; text-shadow: 0 1px 2px #000; }
+    canvas#gl { position: fixed; left: 0; top: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="grid"></div>
+  <script type="module" src="./sheet.js"></script>
+</body>
+</html>

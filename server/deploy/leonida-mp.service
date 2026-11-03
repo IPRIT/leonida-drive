@@ -1,0 +1,55 @@
+# systemd unit for the Leonida Drive multiplayer server (bundle from `node server/tools/pack.mjs`, unpacked to
+# /opt/leonida-mp). Install:
+#   sudo useradd --system --home /var/lib/leonida --shell /usr/sbin/nologin leonida
+#   sudo mkdir -p /var/lib/leonida && sudo chown leonida: /var/lib/leonida
+#   sudo cp leonida-mp.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now leonida-mp
+#   journalctl -u leonida-mp -f
+[Unit]
+Description=Leonida Drive multiplayer server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=leonida
+Group=leonida
+WorkingDirectory=/opt/leonida-mp/server
+ExecStart=/usr/bin/node src/main.js
+Environment=NODE_ENV=production
+Environment=PORT=8787
+Environment=HOST=127.0.0.1
+Environment=DB_PATH=/var/lib/leonida/leonida.db
+Environment=ALLOWED_ORIGINS=https://leonida-drive.io,https://www.leonida-drive.io
+Environment=TRUST_PROXY=1
+# admission: up to MAX_PLAYERS in the world, then a FIFO waiting queue (QUEUE_MAX long; beyond: "server full")
+Environment=MAX_PLAYERS=1000
+Environment=QUEUE_MAX=20000
+# carrier-grade NAT puts many players behind one IP: keep these generous
+Environment=MAX_CONN_PER_IP=32
+Environment=CONN_RATE_PER_IP=120
+Environment=WORKERS=auto
+Environment=EGRESS_MBPS=0
+Environment=LOG_LEVEL=info
+# Environment=METRICS_TOKEN=change-me
+# Privacy: logs and the security log only ever hold the /24 (IPv6 /48) network plus a keyed tag that rotates daily.
+# Put a long random IP_HASH_SECRET in this root-only file (chmod 600) so tags stay comparable across restarts:
+#   printf 'IP_HASH_SECRET=%s\n' "$(openssl rand -hex 32)" | sudo tee /etc/leonida-mp.env >/dev/null && sudo chmod 600 /etc/leonida-mp.env
+EnvironmentFile=-/etc/leonida-mp.env
+# retention (defaults): security log 30 days, profiles that never progressed 180 days
+# Environment=LOG_RETENTION_DAYS=30
+# Environment=STALE_PROFILE_DAYS=180
+# graceful stop: the server saves every session, then exits (hard timeout 15 s inside the process)
+KillSignal=SIGTERM
+TimeoutStopSec=25
+Restart=always
+RestartSec=2
+LimitNOFILE=1048576
+# hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/leonida
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

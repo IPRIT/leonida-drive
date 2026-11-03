@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — Characters Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f14; }
+    #app { position: fixed; inset: 0; }
+    #lab { position: fixed; right: 10px; top: 10px; width: 210px; z-index: 50; font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #e8eef5; }
+    #stats { white-space: pre; background: rgba(10, 12, 18, 0.72); padding: 7px 8px; border-radius: 7px; margin-bottom: 6px; pointer-events: none; }
+    #panel { background: rgba(10, 12, 18, 0.62); padding: 6px; border-radius: 7px; display: flex; flex-wrap: wrap; gap: 4px; max-height: 70vh; overflow: auto; }
+    #panel .h { width: 100%; color: #ff7ab8; font-weight: 700; margin-top: 3px; }
+    #panel button { flex: 1 1 45%; font: inherit; color: #fff; background: #2a3040; border: 1px solid #3d465c; border-radius: 4px; padding: 3px 4px; cursor: pointer; }
+    #panel button:hover { background: #3a4460; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="lab"><div id="stats">loading…</div><div id="panel"></div></div>
+  <script type="module" src="/src/characters/lab-characters.js"></script>
+</body>
+</html>

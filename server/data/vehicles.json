@@ -1,0 +1,1395 @@
+{
+ "generated": "2026-11-03T01:46:50.664Z",
+ "vehicles": [
+  {
+   "id": "pip",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 158,
+   "traffic": true,
+   "price": 13900,
+   "tier": 0.12
+  },
+  {
+   "id": "sprig",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 178,
+   "traffic": true,
+   "price": 17500,
+   "tier": 0.2
+  },
+  {
+   "id": "zephir_rs",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 238,
+   "traffic": true,
+   "price": 33900,
+   "tier": 0.45
+  },
+  {
+   "id": "citadine",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 182,
+   "traffic": true,
+   "price": 19900,
+   "tier": 0.25
+  },
+  {
+   "id": "hikari",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 205,
+   "traffic": true,
+   "price": 24800,
+   "tier": 0.3
+  },
+  {
+   "id": "mochi",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 170,
+   "traffic": true,
+   "price": 19900,
+   "tier": 0.25
+  },
+  {
+   "id": "nuri",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 188,
+   "traffic": true,
+   "price": 18900,
+   "tier": 0.22
+  },
+  {
+   "id": "kade",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 245,
+   "traffic": true,
+   "price": 38500,
+   "tier": 0.6
+  },
+  {
+   "id": "pebble",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 160,
+   "traffic": true,
+   "price": 34000,
+   "tier": 0.4
+  },
+  {
+   "id": "tanuki_r",
+   "kind": "car",
+   "category": "compact",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 47000,
+   "tier": 0.55
+  },
+  {
+   "id": "meridian",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 195,
+   "traffic": true,
+   "price": 21500,
+   "tier": 0.22
+  },
+  {
+   "id": "crestline",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 205,
+   "traffic": true,
+   "price": 29000,
+   "tier": 0.3
+  },
+  {
+   "id": "sora",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 27500,
+   "tier": 0.35
+  },
+  {
+   "id": "aster",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 26900,
+   "tier": 0.33
+  },
+  {
+   "id": "seiran",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 255,
+   "traffic": true,
+   "price": 39000,
+   "tier": 0.45
+  },
+  {
+   "id": "kanzler",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 62000,
+   "tier": 0.75
+  },
+  {
+   "id": "kanzler_s",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 305,
+   "traffic": true,
+   "price": 118000,
+   "tier": 0.88
+  },
+  {
+   "id": "tarpon",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 41000,
+   "tier": 0.4
+  },
+  {
+   "id": "fjell",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 240,
+   "traffic": true,
+   "price": 56000,
+   "tier": 0.65
+  },
+  {
+   "id": "halo",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 225,
+   "traffic": true,
+   "price": 52000,
+   "tier": 0.6
+  },
+  {
+   "id": "serena",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 307,
+   "traffic": true,
+   "price": 82000,
+   "tier": 0.8
+  },
+  {
+   "id": "ambassade",
+   "kind": "car",
+   "category": "sedan",
+   "vclass": 1,
+   "topSpeedKmh": 230,
+   "traffic": true,
+   "price": 48000,
+   "tier": 0.6
+  },
+  {
+   "id": "kaida",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 39000,
+   "tier": 0.45
+  },
+  {
+   "id": "byeol",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 240,
+   "traffic": true,
+   "price": 32000,
+   "tier": 0.4
+  },
+  {
+   "id": "kurve",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 58000,
+   "tier": 0.7
+  },
+  {
+   "id": "breeze",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 195,
+   "traffic": true,
+   "price": 16500,
+   "tier": 0.18
+  },
+  {
+   "id": "lucciola",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 300,
+   "traffic": true,
+   "price": 135000,
+   "tier": 0.85
+  },
+  {
+   "id": "fugue",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 235,
+   "traffic": true,
+   "price": 34000,
+   "tier": 0.45
+  },
+  {
+   "id": "kumo",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 235,
+   "traffic": true,
+   "price": 29900,
+   "tier": 0.35
+  },
+  {
+   "id": "chantry",
+   "kind": "car",
+   "category": "coupe",
+   "vclass": 1,
+   "topSpeedKmh": 314,
+   "traffic": true,
+   "price": 146000,
+   "tier": 0.88
+  },
+  {
+   "id": "comet",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 245,
+   "traffic": true,
+   "price": 46000,
+   "tier": 0.55
+  },
+  {
+   "id": "orkan",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 293,
+   "traffic": true,
+   "price": 112000,
+   "tier": 0.8
+  },
+  {
+   "id": "orkan_ts",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 330,
+   "traffic": true,
+   "price": 231000,
+   "tier": 0.95
+  },
+  {
+   "id": "vane",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 220,
+   "traffic": true,
+   "price": 36000,
+   "tier": 0.5
+  },
+  {
+   "id": "raiko",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 315,
+   "traffic": true,
+   "price": 115000,
+   "tier": 0.8
+  },
+  {
+   "id": "hachi",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 226,
+   "traffic": true,
+   "price": 30000,
+   "tier": 0.4
+  },
+  {
+   "id": "thresher",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 312,
+   "traffic": true,
+   "price": 72000,
+   "tier": 0.7
+  },
+  {
+   "id": "strada",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 320,
+   "traffic": true,
+   "price": 222000,
+   "tier": 0.88
+  },
+  {
+   "id": "kurve_r",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 290,
+   "traffic": true,
+   "price": 89000,
+   "tier": 0.8
+  },
+  {
+   "id": "hwarang",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 270,
+   "traffic": true,
+   "price": 52000,
+   "tier": 0.55
+  },
+  {
+   "id": "arc",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 260,
+   "traffic": true,
+   "price": 125000,
+   "tier": 0.8
+  },
+  {
+   "id": "kite",
+   "kind": "car",
+   "category": "sports",
+   "vclass": 1,
+   "topSpeedKmh": 290,
+   "traffic": true,
+   "price": 98000,
+   "tier": 0.75
+  },
+  {
+   "id": "super",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 300,
+   "traffic": true,
+   "price": 280000,
+   "tier": 0.95
+  },
+  {
+   "id": "tempesta",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 350,
+   "traffic": true,
+   "price": 498000,
+   "tier": 1
+  },
+  {
+   "id": "saetta",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 325,
+   "traffic": true,
+   "price": 262000,
+   "tier": 0.95
+  },
+  {
+   "id": "fenice",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 340,
+   "traffic": true,
+   "price": 320000,
+   "tier": 0.98
+  },
+  {
+   "id": "peregrine",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 340,
+   "traffic": true,
+   "price": 310000,
+   "tier": 0.98
+  },
+  {
+   "id": "zenith",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 380,
+   "traffic": true,
+   "price": 2100000,
+   "tier": 1
+  },
+  {
+   "id": "mitternacht",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 345,
+   "traffic": true,
+   "price": 845000,
+   "tier": 1
+  },
+  {
+   "id": "aurora",
+   "kind": "car",
+   "category": "super",
+   "vclass": 1,
+   "topSpeedKmh": 400,
+   "traffic": true,
+   "price": 3000000,
+   "tier": 1
+  },
+  {
+   "id": "muscle",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 220,
+   "traffic": true,
+   "price": 52000,
+   "tier": 0.45
+  },
+  {
+   "id": "hammerhead",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 220,
+   "traffic": true,
+   "price": 68000,
+   "tier": 0.5
+  },
+  {
+   "id": "swordfish",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 47000,
+   "tier": 0.45
+  },
+  {
+   "id": "wahoo",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 61000,
+   "tier": 0.45
+  },
+  {
+   "id": "gar",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 205,
+   "traffic": true,
+   "price": 34000,
+   "tier": 0.3
+  },
+  {
+   "id": "ironclad",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 52000,
+   "tier": 0.4
+  },
+  {
+   "id": "thunderclap",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 320,
+   "traffic": true,
+   "price": 79000,
+   "tier": 0.6
+  },
+  {
+   "id": "warpath",
+   "kind": "car",
+   "category": "muscle",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 38000,
+   "tier": 0.35
+  },
+  {
+   "id": "dolce_vita",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 240,
+   "traffic": true,
+   "price": 1800000,
+   "tier": 0.95
+  },
+  {
+   "id": "hummel",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 130,
+   "traffic": true,
+   "price": 15000,
+   "tier": 0.2
+  },
+  {
+   "id": "grandview",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 190,
+   "traffic": true,
+   "price": 24000,
+   "tier": 0.35
+  },
+  {
+   "id": "hirondelle",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 175,
+   "traffic": true,
+   "price": 42000,
+   "tier": 0.4
+  },
+  {
+   "id": "ryusei",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 95000,
+   "tier": 0.6
+  },
+  {
+   "id": "linnet",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 240,
+   "traffic": true,
+   "price": 320000,
+   "tier": 0.9
+  },
+  {
+   "id": "driftwood",
+   "kind": "car",
+   "category": "classic",
+   "vclass": 1,
+   "topSpeedKmh": 175,
+   "traffic": true,
+   "price": 26000,
+   "tier": 0.3
+  },
+  {
+   "id": "suv",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 185,
+   "traffic": true,
+   "price": 38000,
+   "tier": 0.4
+  },
+  {
+   "id": "monarch",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 98000,
+   "tier": 0.85
+  },
+  {
+   "id": "cayman",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 200,
+   "traffic": true,
+   "price": 42000,
+   "tier": 0.5
+  },
+  {
+   "id": "alpin_x",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 243,
+   "traffic": true,
+   "price": 72000,
+   "tier": 0.8
+  },
+  {
+   "id": "kitsune",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 195,
+   "traffic": true,
+   "price": 31000,
+   "tier": 0.35
+  },
+  {
+   "id": "doran",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 190,
+   "traffic": true,
+   "price": 28000,
+   "tier": 0.3
+  },
+  {
+   "id": "vidde",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 230,
+   "traffic": true,
+   "price": 64000,
+   "tier": 0.7
+  },
+  {
+   "id": "orbit",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 217,
+   "traffic": true,
+   "price": 49000,
+   "tier": 0.55
+  },
+  {
+   "id": "prospector",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 200,
+   "traffic": true,
+   "price": 72000,
+   "tier": 0.7
+  },
+  {
+   "id": "yama",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 180,
+   "traffic": true,
+   "price": 54000,
+   "tier": 0.45
+  },
+  {
+   "id": "tifone",
+   "kind": "car",
+   "category": "suv",
+   "vclass": 1,
+   "topSpeedKmh": 305,
+   "traffic": true,
+   "price": 230000,
+   "tier": 0.95
+  },
+  {
+   "id": "pickup",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 175,
+   "traffic": true,
+   "price": 28000,
+   "tier": 0.25
+  },
+  {
+   "id": "sawbuck",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 185,
+   "traffic": true,
+   "price": 47000,
+   "tier": 0.4
+  },
+  {
+   "id": "goliath",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 170,
+   "traffic": true,
+   "price": 72000,
+   "tier": 0.45
+  },
+  {
+   "id": "tsuchi",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 175,
+   "traffic": true,
+   "price": 36000,
+   "tier": 0.3
+  },
+  {
+   "id": "roughneck",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 190,
+   "traffic": true,
+   "price": 86000,
+   "tier": 0.6
+  },
+  {
+   "id": "jackrabbit",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 150,
+   "traffic": true,
+   "price": 9000,
+   "tier": 0.15
+  },
+  {
+   "id": "tread",
+   "kind": "car",
+   "category": "pickup",
+   "vclass": 1,
+   "topSpeedKmh": 210,
+   "traffic": true,
+   "price": 85000,
+   "tier": 0.6
+  },
+  {
+   "id": "kazoku",
+   "kind": "van",
+   "category": "van",
+   "vclass": 1,
+   "topSpeedKmh": 195,
+   "traffic": true,
+   "price": 39000,
+   "tier": 0.4
+  },
+  {
+   "id": "homestead",
+   "kind": "van",
+   "category": "van",
+   "vclass": 1,
+   "topSpeedKmh": 175,
+   "traffic": true,
+   "price": 9000,
+   "tier": 0.2
+  },
+  {
+   "id": "courier",
+   "kind": "van",
+   "category": "van",
+   "vclass": 1,
+   "topSpeedKmh": 160,
+   "traffic": true,
+   "price": 42000,
+   "tier": 0.3
+  },
+  {
+   "id": "bummler",
+   "kind": "van",
+   "category": "van",
+   "vclass": 1,
+   "topSpeedKmh": 125,
+   "traffic": true,
+   "price": 32000,
+   "tier": 0.3
+  },
+  {
+   "id": "hakobi",
+   "kind": "van",
+   "category": "van",
+   "vclass": 1,
+   "topSpeedKmh": 160,
+   "traffic": true,
+   "price": 23000,
+   "tier": 0.2
+  },
+  {
+   "id": "regent",
+   "kind": "car",
+   "category": "luxury",
+   "vclass": 1,
+   "topSpeedKmh": 250,
+   "traffic": true,
+   "price": 460000,
+   "tier": 1
+  },
+  {
+   "id": "regent_stretch",
+   "kind": "car",
+   "category": "luxury",
+   "vclass": 1,
+   "topSpeedKmh": 225,
+   "traffic": true,
+   "price": 650000,
+   "tier": 1
+  },
+  {
+   "id": "tourer",
+   "kind": "car",
+   "category": "luxury",
+   "vclass": 1,
+   "topSpeedKmh": 333,
+   "traffic": true,
+   "price": 235000,
+   "tier": 0.95
+  },
+  {
+   "id": "presidential",
+   "kind": "car",
+   "category": "luxury",
+   "vclass": 1,
+   "topSpeedKmh": 190,
+   "traffic": true,
+   "price": 120000,
+   "tier": 0.75
+  },
+  {
+   "id": "gran_viaggio",
+   "kind": "car",
+   "category": "luxury",
+   "vclass": 1,
+   "topSpeedKmh": 335,
+   "traffic": true,
+   "price": 300000,
+   "tier": 0.97
+  },
+  {
+   "id": "taxi",
+   "kind": "car",
+   "category": "service",
+   "vclass": 1,
+   "topSpeedKmh": 200,
+   "traffic": true,
+   "price": 31000,
+   "tier": 0.3
+  },
+  {
+   "id": "cruiser",
+   "kind": "car",
+   "category": "service",
+   "vclass": 1,
+   "topSpeedKmh": 232,
+   "traffic": true,
+   "price": 45000,
+   "tier": 0.4
+  },
+  {
+   "id": "patrol_suv",
+   "kind": "car",
+   "category": "service",
+   "vclass": 1,
+   "topSpeedKmh": 220,
+   "traffic": true,
+   "price": 52000,
+   "tier": 0.5
+  },
+  {
+   "id": "fire_chief",
+   "kind": "car",
+   "category": "service",
+   "vclass": 1,
+   "topSpeedKmh": 220,
+   "traffic": true,
+   "price": 55000,
+   "tier": 0.5
+  },
+  {
+   "id": "box_truck",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 115,
+   "traffic": true,
+   "price": 95000,
+   "tier": 0.3
+  },
+  {
+   "id": "semi",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 125,
+   "traffic": true,
+   "price": 165000,
+   "tier": 0.35
+  },
+  {
+   "id": "dump",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 110,
+   "traffic": true,
+   "price": 140000,
+   "tier": 0.25
+  },
+  {
+   "id": "tow",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 130,
+   "traffic": true,
+   "price": 110000,
+   "tier": 0.3
+  },
+  {
+   "id": "mixer",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 105,
+   "traffic": true,
+   "price": 155000,
+   "tier": 0.25
+  },
+  {
+   "id": "garbage",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 100,
+   "traffic": true,
+   "price": 210000,
+   "tier": 0.3
+  },
+  {
+   "id": "flatbed",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 120,
+   "traffic": true,
+   "price": 98000,
+   "tier": 0.3
+  },
+  {
+   "id": "tanker",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 110,
+   "traffic": true,
+   "price": 175000,
+   "tier": 0.3
+  },
+  {
+   "id": "fire_engine",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 115,
+   "traffic": true,
+   "price": 650000,
+   "tier": 0.5
+  },
+  {
+   "id": "step_van",
+   "kind": "truck",
+   "category": "truck",
+   "vclass": 1,
+   "topSpeedKmh": 115,
+   "traffic": true,
+   "price": 85000,
+   "tier": 0.3
+  },
+  {
+   "id": "city_bus",
+   "kind": "bus",
+   "category": "bus",
+   "vclass": 1,
+   "topSpeedKmh": 100,
+   "traffic": true,
+   "price": 480000,
+   "tier": 0.25
+  },
+  {
+   "id": "coach",
+   "kind": "bus",
+   "category": "bus",
+   "vclass": 1,
+   "topSpeedKmh": 115,
+   "traffic": true,
+   "price": 560000,
+   "tier": 0.4
+  },
+  {
+   "id": "school_bus",
+   "kind": "bus",
+   "category": "bus",
+   "vclass": 1,
+   "topSpeedKmh": 100,
+   "traffic": true,
+   "price": 120000,
+   "tier": 0.3
+  },
+  {
+   "id": "bolla",
+   "kind": "small",
+   "category": "small",
+   "vclass": 1,
+   "topSpeedKmh": 85,
+   "traffic": true,
+   "price": 18000,
+   "tier": 0.2
+  },
+  {
+   "id": "mame",
+   "kind": "small",
+   "category": "small",
+   "vclass": 1,
+   "topSpeedKmh": 135,
+   "traffic": true,
+   "price": 14000,
+   "tier": 0.15
+  },
+  {
+   "id": "birdie",
+   "kind": "small",
+   "category": "small",
+   "vclass": 1,
+   "topSpeedKmh": 30,
+   "traffic": true,
+   "price": 9000,
+   "tier": 0.6
+  },
+  {
+   "id": "saam",
+   "kind": "small",
+   "category": "small",
+   "vclass": 1,
+   "topSpeedKmh": 70,
+   "traffic": true,
+   "price": 4500,
+   "tier": 0.1
+  },
+  {
+   "id": "mote",
+   "kind": "small",
+   "category": "small",
+   "vclass": 1,
+   "topSpeedKmh": 130,
+   "traffic": true,
+   "price": 22000,
+   "tier": 0.4
+  },
+  {
+   "id": "hatake",
+   "kind": "small",
+   "category": "small",
+   "vclass": 1,
+   "topSpeedKmh": 120,
+   "traffic": true,
+   "price": 11000,
+   "tier": 0.15
+  },
+  {
+   "id": "fulmine",
+   "kind": "motorcycle",
+   "category": "motorcycle",
+   "vclass": 2,
+   "topSpeedKmh": 299,
+   "traffic": true,
+   "price": 24000,
+   "tier": 0.6
+  },
+  {
+   "id": "strada800",
+   "kind": "motorcycle",
+   "category": "motorcycle",
+   "vclass": 2,
+   "topSpeedKmh": 230,
+   "traffic": true,
+   "price": 13500,
+   "tier": 0.45
+  },
+  {
+   "id": "roadhouse",
+   "kind": "motorcycle",
+   "category": "motorcycle",
+   "vclass": 2,
+   "topSpeedKmh": 185,
+   "traffic": true,
+   "price": 26000,
+   "tier": 0.5
+  },
+  {
+   "id": "piccola",
+   "kind": "motorcycle",
+   "category": "motorcycle",
+   "vclass": 2,
+   "topSpeedKmh": 98,
+   "traffic": true,
+   "price": 3200,
+   "tier": 0.15
+  },
+  {
+   "id": "arashi",
+   "kind": "motorcycle",
+   "category": "motorcycle",
+   "vclass": 2,
+   "topSpeedKmh": 135,
+   "traffic": true,
+   "price": 8500,
+   "tier": 0.3
+  },
+  {
+   "id": "rattler",
+   "kind": "motorcycle",
+   "category": "motorcycle",
+   "vclass": 2,
+   "topSpeedKmh": 180,
+   "traffic": true,
+   "price": 31000,
+   "tier": 0.4
+  },
+  {
+   "id": "aero",
+   "kind": "bicycle",
+   "category": "bicycle",
+   "vclass": 2,
+   "topSpeedKmh": 38,
+   "traffic": true,
+   "price": 3800,
+   "tier": 0.5
+  },
+  {
+   "id": "kickflip",
+   "kind": "bicycle",
+   "category": "bicycle",
+   "vclass": 2,
+   "topSpeedKmh": 30,
+   "traffic": true,
+   "price": 420,
+   "tier": 0.2
+  },
+  {
+   "id": "switchback",
+   "kind": "bicycle",
+   "category": "bicycle",
+   "vclass": 2,
+   "topSpeedKmh": 34,
+   "traffic": true,
+   "price": 1900,
+   "tier": 0.4
+  },
+  {
+   "id": "boardwalk",
+   "kind": "bicycle",
+   "category": "bicycle",
+   "vclass": 2,
+   "topSpeedKmh": 28,
+   "traffic": true,
+   "price": 450,
+   "tier": 0.3
+  },
+  {
+   "id": "heli_news",
+   "kind": "heli",
+   "category": "heli",
+   "vclass": 3,
+   "topSpeedKmh": 225,
+   "traffic": false,
+   "price": 650000,
+   "tier": 2
+  },
+  {
+   "id": "heli_police",
+   "kind": "heli",
+   "category": "heli",
+   "vclass": 3,
+   "topSpeedKmh": 260,
+   "traffic": false,
+   "price": 1450000,
+   "tier": 3
+  },
+  {
+   "id": "heli_cargo",
+   "kind": "heli",
+   "category": "heli",
+   "vclass": 3,
+   "topSpeedKmh": 275,
+   "traffic": false,
+   "price": 3900000,
+   "tier": 4
+  },
+  {
+   "id": "plane_trainer",
+   "kind": "plane",
+   "category": "plane",
+   "vclass": 4,
+   "topSpeedKmh": 230,
+   "traffic": false,
+   "price": 240000,
+   "tier": 1
+  },
+  {
+   "id": "plane_stunt",
+   "kind": "plane",
+   "category": "plane",
+   "vclass": 4,
+   "topSpeedKmh": 340,
+   "traffic": false,
+   "price": 780000,
+   "tier": 3
+  },
+  {
+   "id": "plane_seaplane",
+   "kind": "plane",
+   "category": "plane",
+   "vclass": 4,
+   "topSpeedKmh": 250,
+   "traffic": false,
+   "price": 520000,
+   "tier": 2
+  },
+  {
+   "id": "plane_jet",
+   "kind": "plane",
+   "category": "plane",
+   "vclass": 4,
+   "topSpeedKmh": 780,
+   "traffic": false,
+   "price": 8500000,
+   "tier": 5
+  },
+  {
+   "id": "boat_speed",
+   "kind": "boat",
+   "category": "boat",
+   "vclass": 5,
+   "topSpeedKmh": 110,
+   "traffic": false,
+   "price": 285000,
+   "tier": 3
+  },
+  {
+   "id": "boat_jetski",
+   "kind": "boat",
+   "category": "boat",
+   "vclass": 5,
+   "topSpeedKmh": 94,
+   "traffic": false,
+   "price": 16500,
+   "tier": 1
+  },
+  {
+   "id": "boat_cruiser",
+   "kind": "boat",
+   "category": "boat",
+   "vclass": 5,
+   "topSpeedKmh": 64,
+   "traffic": false,
+   "price": 640000,
+   "tier": 4
+  },
+  {
+   "id": "boat_airboat",
+   "kind": "boat",
+   "category": "boat",
+   "vclass": 5,
+   "topSpeedKmh": 70,
+   "traffic": false,
+   "price": 48000,
+   "tier": 2
+  },
+  {
+   "id": "ambulance",
+   "kind": "van",
+   "category": "service",
+   "vclass": 1,
+   "topSpeedKmh": 150,
+   "traffic": true,
+   "price": 180000,
+   "tier": 0.4
+  },
+  {
+   "id": "tank",
+   "kind": "tank",
+   "category": "military",
+   "vclass": 1,
+   "topSpeedKmh": 65,
+   "traffic": false,
+   "price": 1500000,
+   "tier": 1
+  }
+ ]
+}

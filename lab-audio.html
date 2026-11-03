@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — Audio Lab</title>
+  <style>
+    :root { --bg: #0d0f14; --panel: #161a22; --line: #262c38; --fg: #e8ecf2; --dim: #8a93a6; --pink: #ff4fa3; --teal: #19d3c5; --amber: #ffb347; }
+    html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    body.world { overflow: hidden; }
+    header { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 3; }
+    header h1 { margin: 0; font-size: 18px; letter-spacing: 3px; background: linear-gradient(90deg, var(--pink), var(--amber), var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; }
+    header a, button { color: var(--fg); }
+    button { background: #222838; border: 1px solid #343c50; border-radius: 6px; padding: 5px 9px; cursor: pointer; font: inherit; }
+    button:hover { border-color: var(--pink); }
+    button.on { background: var(--pink); border-color: var(--pink); color: #fff; }
+    main { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; padding: 14px 18px; }
+    section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+    section h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--teal); }
+    .btns { display: flex; flex-wrap: wrap; gap: 5px; }
+    .row { display: grid; grid-template-columns: 90px 1fr 56px; gap: 8px; align-items: center; margin: 4px 0; }
+    .row span:last-child { text-align: right; color: var(--dim); }
+    input[type=range] { width: 100%; accent-color: var(--pink); }
+    select { background: #222838; color: var(--fg); border: 1px solid #343c50; border-radius: 6px; padding: 4px; font: inherit; }
+    table { border-collapse: collapse; width: 100%; font-size: 11px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    td.bad { color: #ff6b6b; } td.ok { color: #7be495; }
+    #tests { grid-column: 1 / -1; }
+    #status { color: var(--dim); margin-left: auto; }
+    #app { position: fixed; inset: 0; }
+    #wstats { position: fixed; right: 10px; top: 10px; z-index: 50; background: rgba(10, 12, 18, 0.72); padding: 8px 10px; border-radius: 8px; font-size: 11px; white-space: pre; pointer-events: none; }
+    canvas.scope { width: 100%; height: 70px; background: #0a0c11; border-radius: 6px; display: block; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/audio/lab-audio.js"></script>
+</body>
+</html>

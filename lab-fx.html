@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida Drive — FX &amp; Destruction Lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f14; }
+    #app { position: fixed; inset: 0; }
+    #fxlab { position: fixed; right: 12px; top: 12px; width: 268px; z-index: 50; color: #eef1f5; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: rgba(10, 12, 18, 0.72); border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(5px); user-select: none; }
+    #fxlab h3 { margin: 0 0 6px; font: italic 700 15px Futura, 'Trebuchet MS', sans-serif; letter-spacing: 2px;
+      background: linear-gradient(90deg, #ff4fa3, #ffb347); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #fxlab .stats { white-space: pre; color: #9fe; margin-bottom: 8px; font-size: 11px; }
+    #fxlab button { display: block; width: 100%; margin: 3px 0; padding: 5px 8px; border: 0; border-radius: 6px; cursor: pointer; text-align: left;
+      background: rgba(255,255,255,0.09); color: #fff; font: inherit; }
+    #fxlab button:hover { background: rgba(255, 79, 163, 0.45); }
+    #fxlab .row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    #fxlab .row label { flex: 0 0 82px; color: #9ab; }
+    #fxlab .row input[type=range] { flex: 1; }
+    #fxlab .row span { flex: 0 0 34px; text-align: right; }
+    #fxlab .sep { height: 1px; background: rgba(255,255,255,0.12); margin: 6px 0; }
+    #fxlab .hint { color: #789; font-size: 10.5px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="fxlab"><h3>FX LAB</h3><div class="stats">loading…</div></div>
+  <script type="module" src="/src/fx/lab-fx.js"></script>
+</body>
+</html>

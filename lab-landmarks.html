@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leonida — landmarks lab</title>
+  <style>
+    body { margin: 0; background: #000; font: 12px/1.35 ui-monospace, Menlo, monospace; color: #e8e8e8; }
+    #lmklab { position: fixed; top: 8px; left: 8px; width: 300px; max-height: calc(100vh - 16px); overflow: auto; background: rgba(12, 14, 18, 0.82); border: 1px solid #333; border-radius: 6px; padding: 8px; z-index: 10; }
+    #lmklab.min > :not(h3) { display: none; }
+    #lmklab h3 { margin: 0 0 6px; font-size: 13px; cursor: pointer; }
+    #lmklab h4 { margin: 8px 0 4px; font-size: 11px; color: #9ab; text-transform: uppercase; letter-spacing: 0.05em; }
+    #lmklab button { background: #23272e; color: #ddd; border: 1px solid #3a3f47; border-radius: 4px; margin: 2px; padding: 3px 6px; font: inherit; cursor: pointer; }
+    #lmklab button:hover { background: #2f3540; }
+    #lmklab .stats { white-space: pre; font-size: 11px; color: #bfe; margin-top: 6px; }
+    #lmklab .hint { color: #889; font-size: 11px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="app" style="position:fixed;inset:0"></div>
+  <div id="lmklab"><h3>Landmarks lab ▾</h3><div class="stats"></div></div>
+  <script>
+    // load-time frame log for window.lab.loadFrames(): rAF timestamps for the first 90 s
+    try { const lt = (window.__lmkLong = []); new PerformanceObserver((l) => { for (const e of l.getEntries()) lt.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({ entryTypes: ['longtask'] }); } catch {}
+    (() => { const f = (window.__lmkFrames = []); const t0 = performance.now(); const tick = (t) => { f.push(t); if (t - t0 < 90000) requestAnimationFrame(tick); }; requestAnimationFrame(tick); })();
+  </script>
+  <script type="module" src="/src/landmarks/lab-landmarks.js"></script>
+</body>
+</html>

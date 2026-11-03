@@ -1,0 +1,242 @@
+/* ============ Leonida Drive — touch controls & mobile viewport (workstream K, src/mobile) ============
+   Everything is scoped under .tc (overlay), .tc-rotate (portrait screen) or body.is-mobile.
+   Sizes scale with --ts (setting touchScale), button opacity with --to (touchOpacity).
+   Left-handed = dir="rtl" on .tc: every button uses logical insets, so the layout mirrors for free.
+   Only transform/opacity change per frame (analog knobs); mode switches are attribute/class changes. */
+
+body.is-mobile {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y; /* no pinch / double-tap zoom anywhere; menus still scroll */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+html:has(> body.is-mobile) { overscroll-behavior: none; height: 100%; }
+body.is-mobile #game-canvas { touch-action: none; }
+
+.tc {
+  --ts: 1; --to: .7;
+  --ss: env(safe-area-inset-left, 0px); --se: env(safe-area-inset-right, 0px);
+  --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  contain: layout style;
+  font-family: var(--f-ui, system-ui, sans-serif);
+}
+.tc[dir=rtl] { --ss: env(safe-area-inset-right, 0px); --se: env(safe-area-inset-left, 0px); }
+.tc.off, .tc[data-ctx=none] { visibility: hidden; }
+.tc.off *, .tc[data-ctx=none] * { pointer-events: none !important; }
+.tc-surface { position: absolute; inset: 0; pointer-events: auto; touch-action: none; }
+.tc-probe { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+
+/* ---- visibility per context ---- */
+.tc .tc-btn, .tc .tc-an, .tc .tc-thr, .tc .tc-tilt { display: none; }
+.tc[data-ctx=drive] .x-drive, .tc[data-ctx=boat] .x-boat, .tc[data-ctx=heli] .x-heli,
+.tc[data-ctx=plane] .x-plane, .tc[data-ctx=foot] .x-foot, .tc[data-ctx=free] .x-free, .tc[data-ctx=tank] .x-tank { display: flex; }
+.tc:not(.f-near) .c-near, .tc:not(.f-swim) .c-swim, .tc:not(.f-flip) .c-flip, .tc:not(.f-photo) .c-photo, .tc:not(.f-freecam) .c-freecam { display: none !important; }
+.tc:not(.f-tilt) .tc-tilt, .tc.f-tilt .tc-steer { display: none !important; }
+.tc.hud-menu .fb, .tc.f-noexit .b-exit { display: none !important; }
+
+/* ---- round buttons ---- */
+.tc-btn {
+  --d: 64px; --acc: #ff3fa4;
+  position: absolute; pointer-events: auto; touch-action: none;
+  width: calc(var(--d) * var(--ts)); height: calc(var(--d) * var(--ts));
+  box-sizing: border-box; border-radius: 50%;
+  align-items: center; justify-content: center; color: #fff;
+  opacity: var(--to);
+  background: radial-gradient(circle at 50% 36%, rgba(255, 255, 255, .2), rgba(16, 14, 24, .62) 66%);
+  border: calc(2px * var(--ts)) solid rgba(255, 255, 255, .62);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+  transition: transform .07s ease-out, opacity .12s, border-color .12s, box-shadow .12s, color .12s;
+}
+.tc-ico { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; overflow: visible; }
+.tc-ico .f { fill: currentColor; stroke-width: 1.2; }
+.tc-btn.on {
+  opacity: 1; transform: scale(.92); color: var(--acc); border-color: var(--acc);
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .28), rgba(16, 14, 24, .72) 70%);
+  box-shadow: 0 0 0 calc(2px * var(--ts)) rgba(0, 0, 0, .25), 0 0 calc(20px * var(--ts)) var(--acc);
+}
+
+/* driving (right-handed; mirrored with dir=rtl) */
+.tc .b-gas { --d: 94px; inset-inline-end: calc(var(--se) + 16px * var(--ts)); bottom: calc(var(--sb) + 16px * var(--ts)); }
+.tc .b-brake { --d: 80px; inset-inline-end: calc(var(--se) + 124px * var(--ts)); bottom: calc(var(--sb) + 12px * var(--ts)); }
+.tc .b-hbrake { --d: 62px; inset-inline-end: calc(var(--se) + 134px * var(--ts)); bottom: calc(var(--sb) + 104px * var(--ts)); }
+.tc .b-nitro { --d: 62px; inset-inline-end: calc(var(--se) + 32px * var(--ts)); bottom: calc(var(--sb) + 122px * var(--ts)); }
+.tc .b-gas .tc-ico, .tc .b-brake .tc-ico { width: 50%; height: 50%; }
+.tc .b-exit { --d: 56px; inset-inline-end: calc(var(--se) + 214px * var(--ts)); bottom: calc(var(--sb) + 118px * var(--ts)); }
+.tc .b-flip { --d: 56px; inset-inline-end: calc(var(--se) + 214px * var(--ts)); bottom: calc(var(--sb) + 186px * var(--ts)); }
+/* tilt steering: brake moves to the thumb that no longer steers */
+.tc.f-tilt[data-ctx=drive] .b-brake, .tc.f-tilt[data-ctx=boat] .b-brake, .tc.f-tilt[data-ctx=tank] .b-brake { inset-inline-end: auto; inset-inline-start: calc(var(--ss) + 22px * var(--ts)); bottom: calc(var(--sb) + 18px * var(--ts)); --d: 90px; }
+.tc.f-tilt[data-ctx=drive] .b-hbrake { inset-inline-end: auto; inset-inline-start: calc(var(--ss) + 120px * var(--ts)); bottom: calc(var(--sb) + 20px * var(--ts)); }
+.tc-tilt { position: absolute; inset-inline-start: calc(var(--ss) + 34px * var(--ts)); bottom: calc(var(--sb) + 124px * var(--ts));
+  width: calc(46px * var(--ts)); height: calc(46px * var(--ts)); align-items: center; justify-content: center; color: #fff; opacity: calc(var(--to) * .7); will-change: transform; }
+.tc-tilt .tc-ico { width: 100%; height: 100%; }
+
+/* tank: FIRE above the gas pedal (dimmed while reloading), gunner's sight where the handbrake sits in a car */
+.tc .b-fire { --d: 78px; inset-inline-end: calc(var(--se) + 24px * var(--ts)); bottom: calc(var(--sb) + 118px * var(--ts)); }
+.tc .b-fire .tc-ico { width: 54%; height: 54%; }
+.tc.f-reload .b-fire:not(.on) { opacity: calc(var(--to) * .5); border-color: rgba(255, 255, 255, .3); }
+.tc .b-sight { --d: 58px; inset-inline-end: calc(var(--se) + 132px * var(--ts)); bottom: calc(var(--sb) + 106px * var(--ts)); }
+
+/* on foot */
+.tc .b-jump { --d: 86px; inset-inline-end: calc(var(--se) + 20px * var(--ts)); bottom: calc(var(--sb) + 22px * var(--ts)); }
+.tc .b-enter { --d: 68px; inset-inline-end: calc(var(--se) + 30px * var(--ts)); bottom: calc(var(--sb) + 126px * var(--ts)); }
+.tc .b-dive { --d: 66px; inset-inline-end: calc(var(--se) + 122px * var(--ts)); bottom: calc(var(--sb) + 20px * var(--ts)); }
+.tc .b-enter::after { content: ''; position: absolute; inset: calc(-4px * var(--ts)); border-radius: 50%; border: 2px solid var(--acc); opacity: 0; animation: tc-pulse 1.3s ease-out infinite; pointer-events: none; }
+@keyframes tc-pulse { 0% { transform: scale(.85); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+
+/* plane: throttle lever + rudder + wheel brakes on the left, yoke stick on the right */
+.tc-thr { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box;
+  inset-inline-start: calc(var(--ss) + 22px * var(--ts)); bottom: calc(var(--sb) + 18px * var(--ts));
+  width: calc(52px * var(--ts)); height: min(calc(170px * var(--ts)), 50vh);
+  border-radius: calc(16px * var(--ts)); overflow: hidden; opacity: var(--to);
+  background: rgba(16, 14, 24, .58); border: calc(2px * var(--ts)) solid rgba(255, 255, 255, .62); }
+.tc-thr-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: 50% 100%; transform: scaleY(0);
+  background: linear-gradient(0deg, rgba(41, 240, 224, .6), rgba(255, 63, 164, .6)); will-change: transform; }
+.tc-thr-knob { position: absolute; left: 10%; right: 10%; bottom: 10px; height: 8px; margin-bottom: -4px; border-radius: 4px; background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, .8); will-change: transform; }
+.tc .b-rudl { --d: 54px; inset-inline-start: calc(var(--ss) + 90px * var(--ts)); bottom: calc(var(--sb) + 18px * var(--ts)); }
+.tc .b-rudr { --d: 54px; inset-inline-start: calc(var(--ss) + 152px * var(--ts)); bottom: calc(var(--sb) + 18px * var(--ts)); }
+.tc .b-pbrake { --d: 58px; inset-inline-start: calc(var(--ss) + 120px * var(--ts)); bottom: calc(var(--sb) + 84px * var(--ts)); }
+.tc[dir=rtl] .b-rudl { inset-inline-start: calc(var(--ss) + 152px * var(--ts)); }
+.tc[dir=rtl] .b-rudr { inset-inline-start: calc(var(--ss) + 90px * var(--ts)); }
+
+/* free camera */
+.tc .b-up { --d: 60px; inset-inline-end: calc(var(--se) + 26px * var(--ts)); bottom: calc(var(--sb) + 112px * var(--ts)); }
+.tc .b-down { --d: 60px; inset-inline-end: calc(var(--se) + 26px * var(--ts)); bottom: calc(var(--sb) + 30px * var(--ts)); }
+.tc .b-fboost { --d: 60px; inset-inline-end: calc(var(--se) + 104px * var(--ts)); bottom: calc(var(--sb) + 30px * var(--ts)); }
+.tc .b-fexit { --d: 54px; inset-inline-end: calc(var(--se) + 108px * var(--ts)); bottom: calc(var(--sb) + 116px * var(--ts)); }
+
+/* small utility row, bottom centre (above the iOS home indicator) */
+.tc-row { position: absolute; left: 50%; bottom: calc(var(--sb) + 10px * var(--ts)); transform: translateX(-50%); display: flex; gap: calc(8px * var(--ts)); pointer-events: none; }
+.tc-row .tc-btn { position: relative; --d: 46px; }
+/* 667–720 px wide phones (iPhone SE/8 landscape): five row buttons touched the steering track and the brake pedal */
+@media (max-width: 720px) { .tc-row { gap: calc(5px * var(--ts)); } .tc-row .tc-btn { --d: 44px; } }
+@media (max-width: 660px) { .tc-row { gap: calc(4px * var(--ts)); } .tc-row .tc-btn { --d: 40px; } } /* 640 × 360 */
+
+/* photo mode: under the HUD's ☰ (G: #menu-btn at radar width + 20 px, top 8 px), right of the radar; physical left
+   like the HUD. Not next to ☰: the online pill (top centre) reaches it on 667–740 px wide phones */
+.tc .b-photo { --d: 46px; left: calc(env(safe-area-inset-left, 0px) + clamp(140px, 24vw, 220px) + 20px); top: calc(env(safe-area-inset-top, 0px) + 62px); }
+.tc .b-photo .tc-ico { width: 52%; height: 52%; }
+.tc .b-freecam { --d: 46px; left: calc(env(safe-area-inset-left, 0px) + clamp(140px, 24vw, 220px) + 20px); top: calc(env(safe-area-inset-top, 0px) + 116px); }
+.tc .b-freecam .tc-ico { width: 50%; height: 50%; }
+.tc:not(.hud-menu) .b-freecam { left: calc(env(safe-area-inset-left, 0px) + 172px); top: calc(env(safe-area-inset-top, 0px) + 10px); }
+/* the ☰ / photo / free-camera column sits right of the radar: feed cards under the radar stay narrower than it */
+:root body.is-mobile #hud-tl { width: min(300px, 38vw, clamp(140px, 24vw, 220px) + 4px); }
+.tc:not(.hud-menu) .b-photo { left: calc(env(safe-area-inset-left, 0px) + 118px); top: calc(env(safe-area-inset-top, 0px) + 10px); }
+
+/* menu / map fallback (only without the UI's own ☰ button, e.g. noUI labs) */
+.tc .b-menu { --d: 46px; inset-inline-start: calc(var(--ss) + 10px); top: calc(var(--st) + 10px); }
+.tc .b-map { --d: 46px; inset-inline-start: calc(var(--ss) + 64px); top: calc(var(--st) + 10px); }
+
+/* ---- analog: steering slider ---- */
+.tc-steer { position: absolute; left: 0; top: 0; height: calc(56px * var(--ts)); align-items: center; justify-content: center;
+  opacity: calc(var(--to) * .85); will-change: transform; pointer-events: none; transition: opacity .15s; }
+.tc-track { position: absolute; left: calc(22px * var(--ts)); right: calc(22px * var(--ts)); top: 50%; height: calc(12px * var(--ts)); transform: translateY(-50%);
+  border-radius: 99px; border: 1.5px solid rgba(255, 255, 255, .5);
+  background: linear-gradient(90deg, rgba(255, 63, 164, .45), rgba(255, 255, 255, .1) 42%, rgba(255, 255, 255, .1) 58%, rgba(41, 240, 224, .45)); }
+.tc-track i { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: rgba(255, 255, 255, .55); border-radius: 1px; }
+.tc-track i:nth-child(1) { left: 0; } .tc-track i:nth-child(2) { left: 50%; } .tc-track i:nth-child(3) { left: 100%; }
+.tc-steer .tc-knob { position: relative; width: calc(56px * var(--ts)); height: calc(56px * var(--ts)); box-sizing: border-box; border-radius: 50%;
+  background: radial-gradient(circle at 50% 36%, rgba(255, 255, 255, .9), rgba(205, 212, 232, .6) 70%);
+  border: calc(2px * var(--ts)) solid #fff; box-shadow: 0 3px 12px rgba(0, 0, 0, .4); will-change: transform; }
+.tc-steer.on { opacity: 1; }
+
+/* ---- analog: floating sticks ---- */
+.tc-stick { position: absolute; left: 0; top: 0; width: 108px; height: 108px; opacity: calc(var(--to) * .75); will-change: transform; pointer-events: none; transition: opacity .15s; }
+.tc-ring { position: absolute; inset: 0; box-sizing: border-box; border-radius: 50%; border: calc(2px * var(--ts)) solid rgba(255, 255, 255, .55);
+  background: radial-gradient(circle, rgba(255, 255, 255, .05) 40%, rgba(16, 14, 24, .38)); transition: border-color .12s, box-shadow .12s; }
+.tc-stick .tc-knob { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%;
+  background: radial-gradient(circle at 50% 36%, rgba(255, 255, 255, .92), rgba(205, 212, 232, .6) 70%); box-shadow: 0 3px 12px rgba(0, 0, 0, .4); will-change: transform; }
+.tc-stick.on { opacity: 1; }
+.tc-stick.sprint .tc-ring { border-color: #29f0e0; box-shadow: 0 0 calc(18px * var(--ts)) rgba(41, 240, 224, .8); }
+.tc[data-ctx=heli] .tc-stick:not(.r) .tc-ring::before, .tc[data-ctx=heli] .tc-stick:not(.r) .tc-ring::after {
+  content: ''; position: absolute; left: 50%; width: 0; height: 0; margin-left: -6px; border: 6px solid transparent; opacity: .7; }
+.tc[data-ctx=heli] .tc-stick:not(.r) .tc-ring::before { top: 6px; border-bottom-color: #fff; }
+.tc[data-ctx=heli] .tc-stick:not(.r) .tc-ring::after { bottom: 6px; border-top-color: #fff; }
+
+/* ---- portrait: rotate your phone ---- */
+.tc-rotate { position: absolute; inset: 0; z-index: 25; display: none; align-items: center; justify-content: center; text-align: center; color: #fff;
+  background: radial-gradient(ellipse at 50% 28%, rgba(84, 22, 96, .94), rgba(6, 4, 12, .97) 72%); touch-action: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  font-family: var(--f-ui, system-ui, sans-serif); }
+.tc-rotate.show { display: flex; }
+.tc-rotate-box { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 80vw; }
+.tc-phone { width: 128px; height: 128px; margin-bottom: 8px; overflow: visible; }
+.tc-phone-body { fill: rgba(255, 255, 255, .06); stroke: #fff; stroke-width: 3; stroke-linecap: round; transform-box: view-box; transform-origin: 60px 60px; animation: tc-rot 2.6s cubic-bezier(.6, 0, .3, 1) infinite; }
+.tc-phone-arc { fill: none; stroke: var(--pink, #ff3fa4); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; animation: tc-arc 2.6s ease-in-out infinite; }
+@keyframes tc-rot { 0%, 18% { transform: rotate(0deg); } 48%, 78% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+@keyframes tc-arc { 0%, 18% { opacity: 1; } 40%, 85% { opacity: .15; } 100% { opacity: 1; } }
+.tc-rotate-t { font-family: var(--f-disp, sans-serif); font-weight: var(--fw-disp, 700); font-size: 26px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold, #ffd36b); text-shadow: 2px 2px 0 #000; }
+.tc-rotate-s { font-size: 15px; letter-spacing: 1px; opacity: .85; }
+.tc-rotate-tip { font-size: 13px; opacity: .65; max-width: 280px; }
+.tc-rotate-tip:empty { display: none; }
+.tc-rotate-menu { margin-top: 18px; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, .35); background: rgba(0, 0, 0, .45); color: #fff; font: inherit; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+.tc-rotate-menu .tc-ico { width: 20px; height: 20px; }
+.tc-rotate-menu:active { background: var(--pink, #ff3fa4); }
+/* ---- HUD around the controls (G owns the HUD; K only re-stacks the upper-right block) ----
+   The right thumb cluster reaches ~190 px from the bottom, which on 360–390 px tall phones collides with the
+   speedometer at G's top: clamp(84px, 24vh, 120px). Speedo / flight instruments go right under the money;
+   the transient area & vehicle names live in G's bottom-centre strip (#hud-bc) on touch, so nothing grows down into
+   the buttons. Higher specificity: this file may load before styles.css. */
+:root body.is-mobile #hud-br { top: calc(62px + env(safe-area-inset-top, 0px)); flex-direction: column-reverse; }
+
+/* ---- other modules' overlays on touch screens (layout only; their own CSS is injected at runtime, hence :root) ---- */
+/* time trials (src/life/hud.js): the panel sits over the right thumb cluster at top 34% → compact, left under the
+   radar; START + the start prompt move above the controls: top centre under the online pill, clear of the photo
+   button (left) and the speedometer (right) */
+:root body.is-mobile #life-hud .lf-race { right: auto; left: calc(10px + env(safe-area-inset-left, 0px)); top: calc(clamp(140px, 24vw, 220px) * .64 + 20px + env(safe-area-inset-top, 0px));
+  min-width: 250px; transform: scale(.62); transform-origin: left top; }
+:root body.is-mobile #life-hud .lf-race.on { animation: none; } /* lf-slide animates transform (would drop the scale) */
+:root body.is-mobile #life-hud .lf-race .lf-title { text-align: left; }
+:root body.is-mobile #life-hud .lf-race .lf-row { background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.62) 72%, rgba(0,0,0,0) 100%); }
+:root body.is-mobile:has(#life-hud .lf-race.on) #feed .card:nth-last-child(n+2) { display: none; } /* one feed card under the panel */
+:root body.is-mobile:has(#life-hud .lf-race.on) #hud-tl { top: calc(clamp(140px, 24vw, 220px) * .64 + 116px + env(safe-area-inset-top, 0px)); }
+:root body.is-mobile #life-hud .lf-tap { bottom: auto; top: var(--tc-race-top, calc(62px + env(safe-area-inset-top, 0px))); }
+:root body.is-mobile #life-hud .lf-tap button { min-height: 48px; min-width: 170px; padding: 6px 28px; font-size: 20px; }
+:root body.is-mobile #life-hud .lf-prompt { bottom: auto; top: calc(var(--tc-race-top, calc(62px + env(safe-area-inset-top, 0px))) + 56px);
+  max-width: var(--tc-race-w, min(52vw, 430px, calc(100vw - 380px))); box-sizing: border-box;
+  white-space: normal; flex-wrap: wrap; justify-content: center; row-gap: 2px; font-size: 15px; padding: 6px 12px; text-align: center; }
+/* queued behind the big banners (welcome, new area): they share the top centre for a few seconds */
+:root body.is-mobile:has(#bigmsg.show) #life-hud :is(.lf-tap, .lf-prompt) { visibility: hidden; opacity: 0; }
+:root body.is-mobile #life-hud .lf-big h1 { font-size: clamp(40px, 14vh, 78px); }
+:root body.is-mobile #life-hud .lf-pop { top: calc(58px + env(safe-area-inset-top, 0px)); }
+
+/* hold-Tab scoreboard (src/net/ui/Scoreboard.js): one-line rows, the close button clear of the ping, ≥ 44 px targets,
+   no backdrop blur (lite); the online pill (tap = scoreboard) gets a 44 px hit area */
+:root body.is-mobile .ldn-sb { -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, rgba(14,14,22,.92), rgba(8,8,12,.95)); max-height: calc(100% - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+:root body.is-mobile .ldn-sb header { padding-inline-end: 52px; }
+:root body.is-mobile .ldn-sb .x { top: 2px; right: 2px; width: 44px; height: 44px; padding: 0; text-align: center; line-height: 44px; font-size: 22px; }
+:root body.is-mobile .ldn-sb .row { grid-template-columns: 22px 12px minmax(0, 1fr) 0 82px 92px; min-height: 40px; box-sizing: border-box; }
+:root body.is-mobile .ldn-sb .row .d { white-space: nowrap; }
+:root body.is-mobile .ldn-sb nav button { min-height: 40px; box-sizing: border-box; }
+:root body.is-mobile .ldn-chip { position: relative; }
+:root body.is-mobile .ldn-chip::after { content: ''; position: absolute; inset: -9px -8px -20px; } /* also covers its "Tap — players" hint */
+:root body.is-mobile .ldn-hint { pointer-events: none; }
+
+/* photo mode (src/life/PhotoMode.js): compact scrolling panel without blur, touch buttons + hint (photo.js) */
+:root body.is-mobile #life-photo .ph-panel { left: calc(8px + env(safe-area-inset-left, 0px)); top: calc(8px + env(safe-area-inset-top, 0px)); width: 236px; box-sizing: border-box;
+  max-height: calc(100% - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain; padding: 10px 12px;
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(8, 8, 12, .82); touch-action: pan-y; }
+:root body.is-mobile #life-photo h2 { font-size: 17px; } :root body.is-mobile #life-photo h2 small { font-size: 17px; }
+:root body.is-mobile #life-photo .ph-row { margin-top: 4px; }
+:root body.is-mobile #life-photo input[type=range] { height: 28px; margin: 0; }
+:root body.is-mobile #life-photo .ph-chips button { min-height: 32px; padding: 3px 9px; }
+:root body.is-mobile #life-photo .ph-toggles button, :root body.is-mobile #life-photo .ph-actions button { min-height: 44px; }
+:root body.is-mobile #life-photo .ph-hint { display: none; }
+:root body.is-mobile #life-photo .ph-toast { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(44px + env(safe-area-inset-bottom, 0px)); }
+.tc-photo { --ts: 1; --to: .85; position: fixed; inset: 0; z-index: 61; pointer-events: none; display: none; touch-action: none; user-select: none; -webkit-user-select: none;
+  font-family: var(--f-ui, system-ui, sans-serif); }
+.tc-photo.on { display: block; }
+.tc-photo .tc-btn { display: flex; }
+.tc-photo .b-pshot { --d: 74px; right: calc(18px + env(safe-area-inset-right, 0px)); top: 50%; margin-top: -37px; }
+.tc-photo .b-pshot .tc-ico { width: 56%; height: 56%; }
+.tc-photo .b-ppanel { --d: 50px; right: calc(30px + env(safe-area-inset-right, 0px)); top: calc(50% - 37px - 62px); }
+.tc-photo .b-pexit { --d: 50px; right: calc(30px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); }
+.tc-photo-hint { position: absolute; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: 70vw; text-align: center;
+  padding: 5px 12px; border-radius: 3px; background: rgba(8, 8, 12, .6); color: #dde; font-size: 13px; letter-spacing: .03em; }
+
+@media (prefers-reduced-motion: reduce) { .tc-phone-body { animation: none; transform: rotate(-90deg); } .tc-phone-arc, .tc .b-enter::after { animation: none; } }
