@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { diagnostics, FrameHistory } from '../../src/debug/metrics.js';
 import { LinkEmulator } from '../../src/debug/LinkEmulator.js';
 import { Economy } from '../../src/economy/Economy.js';
+import { NetEconomy } from '../../src/net/NetEconomy.js';
+import { NOTICE } from '../../src/net/shared/constants.js';
 test('diagnostic export uses an explicit allowlist and excludes credentials',()=>{
   const h=new FrameHistory(3);[10,20,30,40].forEach(v=>h.push(v));assert.deepEqual(h.ordered(),[20,30,40]);
   const secret='private-fixture';
@@ -17,4 +19,10 @@ test('turning off impairment cancels queued old poses',async()=>{
 test('flying a debug/photo camera cannot discover districts or submit money claims',()=>{
   const probe={game:{player:{mode:'free',focus:{x:0,y:2,z:0}},world3d:{areaAt(){throw new Error('camera must not discover a district');}}},remote:false};
   assert.doesNotThrow(()=>Economy.prototype._discover.call(probe));
+});
+test('server thaw updates the existing client economy without a reload',()=>{
+  const handlers=new Map(),client={on(k,fn){handlers.set(k,fn);return()=>{};},onState(k,fn){return this.on(k,fn);}};
+  const e=new NetEconomy({},client);
+  handlers.get('notice')({code:NOTICE.CLAIMS_FROZEN});assert.equal(e.snapshot().frozen,true);
+  handlers.get('notice')({code:NOTICE.CLAIMS_RESTORED});assert.equal(e.snapshot().frozen,false);
 });

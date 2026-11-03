@@ -1,7 +1,7 @@
 // Client side of the server-authoritative economy. game.economy (workstream L) calls these; every call resolves with
 // the server's answer. Server state is pushed into game.economy.applyServer({ money, owned, worth, combo, progress,
 // daily }). Without game.economy the wallet is mirrored into player.money and player.addMoney becomes a claim.
-import { CLAIM, CLAIM_NAMES, WALLET, ECON, ECON_RESULT, SERVICE, WARDROBE_OP, NICK_OP, NICK_RESULT, NICK_PRICE } from './shared/constants.js';
+import { CLAIM, CLAIM_NAMES, WALLET, ECON, ECON_RESULT, SERVICE, WARDROBE_OP, NICK_OP, NICK_RESULT, NICK_PRICE, NOTICE } from './shared/constants.js';
 import { encodeClaim, encodeEcon, encodeService, encodeOutfit, encodeNickReq } from './shared/protocol.js';
 import { HORN_VARIANTS, PAINT_FINISHES, nickPrice } from '../economy/rules.js';
 import { ADJECTIVES, NOUNS } from './shared/nicknames.js';
@@ -61,6 +61,11 @@ export class NetEconomy {
       client.onState('rank', (r) => { this.rank = r; this._emit(); }),
       client.onState('garage', (g) => this._garage(g)),
       client.on('nick', (n) => this._nick(n)),
+      client.on('notice', (n) => {
+        if (n.code !== NOTICE.CLAIMS_FROZEN && n.code !== NOTICE.CLAIMS_RESTORED) return;
+        this.frozen = n.code === NOTICE.CLAIMS_FROZEN;
+        this._push({ frozen: this.frozen });
+      }),
       client.on('disconnect', () => this._failAll()),
     ];
     this._installAddMoney();
