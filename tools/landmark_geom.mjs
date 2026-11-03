@@ -55,6 +55,10 @@ game.terrain = new Terrain(data, scene);
 game.roads = new Roads(data, game.terrain, scene);
 game.buildings = new Buildings(data, game.terrain, scene);
 const lm = createLandmarks(game, { log: false });
+// Server validation uses the same runway detector as Plane.place().
+const { findRunways } = await import('../src/air/runways.js');
+fs.writeFileSync(path.join(ROOT, 'server/data/spawn-places.json'), JSON.stringify({ version: 1,
+  runways: findRunways(game.roads).map(({ x0, z0, x1, z1, w, y, airport }) => ({ x0, z0, x1, z1, w, y, airport })) }, null, 2) + '\n');
 if (args.includes('--report')) {
   const report = lm.sites.map(({ id, name, x, z, skipped, why, removed, views }) => ({ id, name, skipped, why, removed, views,
     candidates: game.buildings.query(x, z, 35).map((i) => {

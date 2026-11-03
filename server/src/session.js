@@ -20,6 +20,7 @@ import { Movement, V_OK, V_JUMP, V_NAMES } from './validate.js';
 import { Economy } from './economy.js';
 import { CLASS_LIMITS } from './vehicles.js';
 import { FLAG_FROZEN, FLAG_BANNED } from './db.js';
+import { vehicleSpawnDestination } from './spawn-places.js';
 import { rankOf, slotName, setSlotName, OUTFIT_STRIDE, JOIN_RING, DAMAGE_STRIDE } from './shared-mem.js';
 import { checkName } from './names.js';
 import { ipForLog } from './privacy.js';
@@ -253,6 +254,7 @@ export class Session {
     const hospitals = gw.world.hospitals;
     this.mv.allowJump('join', now + 30000, (x, z) => gw.cfg.joinAnywhere || Math.hypot(x - base.x, z - base.z) < radius
       || Math.hypot(x - DEFAULT_SPAWN.x, z - DEFAULT_SPAWN.z) < 2000 || hospitals.some((hh) => Math.hypot(x - hh.x, z - hh.z) < 500));
+    this._allowVehicleRelocation(this.model, now);
     // shared info table
     v.nick[slot] = rec.nickCode;
     v.color[slot] = rec.color;
@@ -559,8 +561,20 @@ export class Session {
       this.approved.set(r.model, now);
       if (this.approved.size > 6) this.approved.delete(this.approved.keys().next().value);
       this._setPaint(r.rgb);
+      this._allowVehicleRelocation(r.model, now);
     }
     this.send(encodeSpawnAck(code, r.reqId, r.model, code === SPAWN.COOLDOWN ? (cd - (now - this.lastSpawn)) / 1000 : 0));
+  }
+
+  _allowVehicleRelocation(index, now) {
+    const model = this.gw.vehicles.models[index];
+    if (!model || !this.econ.owned.has(model.id)) return;
+    const destination = vehicleSpawnDestination(model, { x: this.mv.x, z: this.mv.z }, this.gw.world);
+    if (!destination) return;
+    // Keep the original join/respawn allowance, but never chain old spawn grants.
+    const previous = this.mv.grace?.kind !== 'vehicle-spawn' ? this.mv.grace : null;
+    this.mv.allowJump('vehicle-spawn', now + 30000, (x, z, state, at) =>
+      destination(x, z, state) || !!(previous && at <= previous.until && previous.test(x, z, state, at)));
   }
 
   /** The colour the player's car shows (rgb) and its finish (index + 1 into PAINT_FINISHES, 0 = keep). */

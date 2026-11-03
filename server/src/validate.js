@@ -1,7 +1,7 @@
 // Server-side movement validation. The client simulates its own physics (responsive driving), so every state it
 // sends is a claim: positions must be reachable from the last accepted one at the vehicle class's speed, vertical
 // motion must be plausible for the class, and there are no unexplained jumps. Teleports do not exist online; the
-// only discontinuities are server-granted (join placement, respawn after death).
+// only discontinuities are server-granted (join, respawn and approved vehicle placement).
 import { WORLD, VCLASS, ANIM, F_ANIM, F_ANIM_SHIFT, F_AIRBORNE } from '../../src/net/shared/constants.js';
 import { CLASS_LIMITS } from './vehicles.js';
 
@@ -86,7 +86,7 @@ export class Movement {
     const dh = Math.hypot(s.x - this.x, s.z - this.z);
     if (dh > this.budget + 2) {
       const g = this.grace;
-      if (g && now <= g.until && g.test(s.x, s.z)) {
+      if (g && now <= g.until && g.test(s.x, s.z, s, now)) {
         this.grace = null;
         this.jumpT = now;
         this._accept(s, now, true);

@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=deps /app/server/node_modules server/node_modules
 COPY server/package.json server/
 COPY server/src server/src
-COPY server/data/vehicles.json server/data/name-blocklist.txt server/data/
+COPY server/data/vehicles.json server/data/name-blocklist.txt server/data/spawn-places.json server/data/
 COPY src/net/shared src/net/shared
 COPY src/economy/rules.js src/economy/prices.json src/economy/wardrobe-prices.json src/economy/
 COPY public/data/world.json public/data/height.bin public/data/

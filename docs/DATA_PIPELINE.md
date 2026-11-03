@@ -22,7 +22,7 @@ node tools/landmark_geom.mjs
 .venv/bin/python tools/map_build.py
 ```
 
-The second IRL pass applies the freshly generated landmark ownership list. `landmark_geom.mjs` writes `landmark_geom.json`, `landmark_takes.json` and parked-vehicle dimensions. The vector map draws the actual runway / aircraft outlines and paths from `parks.json`.
+The second IRL pass applies the freshly generated landmark ownership list. `landmark_geom.mjs` writes `landmark_geom.json`, `landmark_takes.json`, parked-vehicle dimensions and `server/data/spawn-places.json` for validated aircraft placement. The vector map draws the actual runway / aircraft outlines and paths from `parks.json`.
 
 Coordinates are world metres: **x = longitude-like map axis, z = minus latitude-like map axis**. The source mosaic is sampled at 2 m per pixel; this reconstruction is not survey data.
 

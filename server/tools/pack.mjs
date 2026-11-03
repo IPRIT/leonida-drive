@@ -35,6 +35,7 @@ copy('server/package.json');
 copy('server/package-lock.json');
 copy('server/data/vehicles.json');
 copy('server/data/name-blocklist.txt');
+copy('server/data/spawn-places.json');
 copy('server/deploy');
 // production dependencies only (uWebSockets.js, ws); drop binaries for other OSes to keep the bundle small
 copy('server/node_modules', (rel) => !/uWebSockets\.js\/uws_(darwin|win32)_/.test(rel) && !/\.bin$/.test(rel));
