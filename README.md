@@ -82,7 +82,6 @@ The optional **Debug panel** opens after ten quick clicks on the version in **Ab
 
 Full-map player updates cover the entire island every two seconds while the map is open. Distant markers share the same smooth tracks as nearby players; screen-space clusters retain player counts without loading distant cars into the 3D scene. Driving is simulated locally, including during reconnection. A connection outage can still hide another player's latest turn; prediction cannot recover information that has not arrived.
 
-Remote collisions are enabled only for sufficiently fresh, stable poses. During high latency or a disconnect, other players remain visual rather than pushing your vehicle with outdated physics. Collisions return once the connection recovers and the vehicles are clear of each other.
 
 <details>
 <summary>Downtown after dark</summary>
