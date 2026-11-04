@@ -471,7 +471,7 @@ export class VehiclesTab extends Tab {
     const money = (n) => this.i18n.money(n);
     if (this.owns(m.id)) {
       const sell = this.isStarter(m.id)
-        ? `<span class="dnote">${esc(this.t('veh.noStarterSale'))}</span>`
+        ? (this.game?.mode === 'online' ? '' : `<span class="dnote">${esc(this.t('veh.noStarterSale'))}</span>`)
         : `<button class="mbtn sell" data-nav data-act="sell" tabindex="-1">${icon('money')}<span>${esc(this.t('veh.sell', { price: money(this.sellPrice(m)) }))}</span></button>`;
       return `${spawn}${favBtn}<div class="dact2">${sell}</div>`;
     }

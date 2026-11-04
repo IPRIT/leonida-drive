@@ -99,7 +99,7 @@ test('money hacks: implausible claims are rejected, collectibles cannot be repla
 
 test('purchases: the server checks funds and ownership; spawning needs ownership', async () => {
   const a = new TestClient(url); await a.connect();
-  const jet = a.modelIndex('plane_jet');
+  const jet = a.modelIndex('tank');
   a.econ(ECON.BUY, jet);
   assert.equal((await a.next(S_ECON)).result, ECON_RESULT.FUNDS);
   a.spawn(jet, 0xffffff, 1728, -733, 9);
@@ -133,17 +133,15 @@ async function waitUp(p, port) {
 
 test('persistence: money, ownership, position and vehicle survive a server restart', async () => {
   const p2 = 20000 + Math.floor(Math.random() * 2000);
-  const env = { PORT: String(p2), HOST: '127.0.0.1', DB_PATH: path.join(tmp, 'persist.db'), WORKERS: '1', MAX_CONN_PER_IP: '64' };
+  const env = { PORT: String(p2), HOST: '127.0.0.1', DB_PATH: path.join(tmp, 'persist.db'), WORKERS: '1', MAX_CONN_PER_IP: '64', START_MONEY: '60000' };
   let proc = runServer(env);
   try {
   await waitUp(proc, p2);
   const u = `ws://127.0.0.1:${p2}/ws`;
   const a = new TestClient(u);
   const w = await a.connect();
-  // the cheapest vehicle we don't own yet (prices: the shared table)
-  const prices = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../src/economy/prices.json'), 'utf8'));
-  const cheapId = Object.entries(prices.prices || prices).filter(([id, p]) => !p.starter && a.modelIndex(id) > 0).sort((x, y) => x[1].price - y[1].price)[0][0];
-  const sprig = a.modelIndex(cheapId);
+  // The tank is the only paid vehicle in the multiplayer garage.
+  const sprig = a.modelIndex('tank');
   // earn a postcard, buy a car (persisted immediately), drive somewhere
   a.sendState({ x: 1728, y: 2, z: -733, model: a.modelIndex('pip') });
   await sleep(150);

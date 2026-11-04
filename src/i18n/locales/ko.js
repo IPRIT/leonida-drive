@@ -852,4 +852,5 @@ export default {
   'mobile.welcomeSub': '☰ — 메뉴와 차량 · 레이더 탭 — 지도',
   'mobile.tapPlayers': '탭 — 플레이어',
   'mobile.photoHint': '드래그로 회전 · 핀치로 확대/축소 · 두 손가락으로 이동',
+  'net.adminTravel': "관리자가 순간이동시켰습니다",
 };

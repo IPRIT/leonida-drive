@@ -858,4 +858,5 @@ export default {
   'mobile.welcomeSub': '☰ — menü és járművek · koppints a radarra — térkép',
   'mobile.tapPlayers': 'Koppints — játékosok',
   'mobile.photoHint': 'Húzd a forgatáshoz · csippentsd a zoomhoz · két ujjal mozgasd',
+  'net.adminTravel': "Egy adminisztrátor átteleportált",
 };

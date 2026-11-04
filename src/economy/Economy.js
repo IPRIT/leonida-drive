@@ -10,6 +10,7 @@
 import { PRICES } from './prices.js';
 import WARDROBE_TABLE from './wardrobe-prices.json' with { type: 'json' };
 import * as R from './rules.js';
+import { onlineVehiclePrice, cashWorth } from './online.js';
 import { randomNickCode, nickName, nameFormatError, looksGenerated } from '../net/shared/nicknames.js';
 
 const SAVE_VERSION = 1;
@@ -25,12 +26,14 @@ export class Economy {
   constructor(game, opts = {}) {
     this.game = game;
     this.prices = opts.prices || PRICES;
+    if (game.mode === 'online') this.prices = Object.fromEntries(Object.entries(this.prices).map(([id,p]) => [id,onlineVehiclePrice(id,p)]));
     this.clock = opts.clock || (() => Date.now());
     this.storage = opts.storage !== undefined ? opts.storage : (typeof localStorage !== 'undefined' ? localStorage : null);
     this.saveKey = opts.saveKey || (game.mode === 'single' ? 'leonida.save.single' : 'leonida.save.offline');
     this.starters = new Set(Object.keys(this.prices).filter((id) => this.prices[id].starter));
     this.starterCar = [...this.starters].find((id) => this.prices[id].cls !== 'bicycle') || 'pip';
     this.starterBike = [...this.starters].find((id) => this.prices[id].cls === 'bicycle') || null;
+    if (game.mode === 'online') { this.starterCar = 'pip'; this.starterBike = 'kickflip'; }
     this.districtNames = (game.worldData?.districts || []).map((d) => d.name);
 
     this._listeners = new Set();
@@ -150,6 +153,7 @@ export class Economy {
   }
   /** Leaderboard value: cash + the garage sale value of sellable vehicles. */
   netWorth() {
+    if (this.remote) return cashWorth(this.money);
     if (this.server && Number.isFinite(this.server.worth) && !this._pending.length) return this.server.worth;
     return R.netWorth(this.money, this.owned, (id) => this._p(id));
   }

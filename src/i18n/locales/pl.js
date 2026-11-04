@@ -872,4 +872,5 @@ export default {
   'mobile.welcomeSub': '☰ — menu i pojazdy · dotknij radaru — mapa',
   'mobile.tapPlayers': 'Dotknij — gracze',
   'mobile.photoHint': 'Przeciągnij, by obracać · uszczypnij, by przybliżyć · dwoma palcami przesuwaj',
+  'net.adminTravel': "Administrator cię teleportował",
 };

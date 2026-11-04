@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Store } from '../src/db.js';
 import { Economy } from '../src/economy.js';
-import { netWorth } from '../../src/economy/rules.js';
+import { cashWorth, onlineVehiclePrice } from '../../src/economy/online.js';
+import { ECON_RESULT } from '../../src/net/shared/constants.js';
 
 const prices = new Map([
   ['pip', { price: 13900, starter: true }], ['kickflip', { price: 420, starter: true }],
@@ -13,12 +14,12 @@ const record = (i, owned) => ({ hash: new Uint8Array(32).fill(i), nick: `fixture
   createdAt: Date.now(), lastSeen: Date.now(), stats: { earned: 9000 }, flags: 0, owned, progress: { c: [3] },
   worth: 21876, garage: { inventory: { extinguisher: 1 } }, wardrobe: { own: { shirt: null } } });
 
-test('new players have cash-only worth; paid sellable vehicles add their garage sale value', () => {
+test('multiplayer worth stays equal to cash after every garage unlock', () => {
   const clothes = new Map([['shirt', { id: 'shirt', slot: 'top', price: 10000 }]]);
   const e = new Economy(record(1, ['pip', 'kickflip']), { prices, wardrobe: { byId: clothes } }, 0);
   assert.equal(e.worth(), 14000);
-  e.owned.add('comet'); assert.equal(e.worth(), 39300);
-  assert.equal(netWorth(14000, ['comet', 'comet', 'pip'], prices), 39300, 'duplicate inventory entries never double-count');
+  e.owned.add('comet'); assert.equal(e.worth(), 14000);
+  assert.equal(cashWorth(e.money),14000);
 });
 
 test('offline leaderboard revaluation is idempotent and preserves money, ownership, wardrobe and progress', () => {
@@ -29,11 +30,22 @@ test('offline leaderboard revaluation is idempotent and preserves money, ownersh
     const before = s.load(a.hash);
     assert.equal(s.revalueWorth(prices), 2);
     assert.deepEqual(s.load(a.hash), { ...before, worth: 14000 });
-    assert.equal(s.load(b.hash).worth, 39300);
+    assert.equal(s.load(b.hash).worth, 14000);
     assert.equal(s.revalueWorth(prices), 0);
     const revised = new Map(prices); revised.set('comet', { price: 50000, starter: false });
-    assert.equal(s.revalueWorth(revised), 1);
-    assert.equal(s.load(b.hash).worth, 41500);
+    assert.equal(s.revalueWorth(revised), 0);
+    assert.equal(s.load(b.hash).worth, 14000);
     assert.equal(s.load(a.hash).money, 14000);
   } finally { s.close(); }
+});
+
+test('online garage opens every regular vehicle; the tank costs exactly $50000; free cars cannot be sold',()=>{
+ const base=new Map([...prices,['tank',{price:1800000,starter:false}]]);
+ const online=new Map([...base].map(([id,p])=>[id,onlineVehiclePrice(id,p)]));
+ const e=new Economy({...record(5,[]),money:50000},{prices:online},0);
+ assert.deepEqual([...e.owned].sort(),['comet','kickflip','pip']);
+ assert.equal(e.sell('comet',1).result,ECON_RESULT.NOT_SELLABLE);
+ assert.equal(e.buy('tank').result,ECON_RESULT.OK);assert.equal(e.money,0);assert.equal(e.worth(),0);
+ const resumed=new Economy({...record(5,[...e.owned]),money:0},{prices:online},1);
+ assert.ok(resumed.owned.has('tank'));assert.equal(resumed.worth(),0);
 });

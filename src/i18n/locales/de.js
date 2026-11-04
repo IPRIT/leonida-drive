@@ -858,4 +858,5 @@ export default {
   'mobile.welcomeSub': '☰ — Menü und Fahrzeuge · Radar antippen — Karte',
   'mobile.tapPlayers': 'Antippen — Spieler',
   'mobile.photoHint': 'Ziehen zum Drehen · Zwei Finger spreizen zum Zoomen · mit zwei Fingern verschieben',
+  'net.adminTravel': "Ein Administrator hat dich teleportiert",
 };

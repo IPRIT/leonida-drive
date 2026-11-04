@@ -858,4 +858,5 @@ export default {
   'mobile.welcomeSub': '☰ — menü ve araçlar · radara dokun — harita',
   'mobile.tapPlayers': 'Dokun — oyuncular',
   'mobile.photoHint': 'Döndürmek için sürükle · yakınlaştırmak için iki parmakla sıkıştır · kaydırmak için iki parmak',
+  'net.adminTravel': "Bir yönetici seni ışınladı",
 };

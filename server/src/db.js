@@ -3,8 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createHash } from 'node:crypto';
-import { netWorth, WORTH_FRACTION } from '../../src/economy/rules.js';
+import { cashWorth } from '../../src/economy/online.js';
 
 export const FLAG_FROZEN = 1; // claims frozen (suspected cheating): excluded from the leaderboard
 export const FLAG_BANNED = 2;
@@ -79,8 +78,7 @@ export class Store {
 
   /** Rebuild the derived leaderboard cache once per formula / price version, including offline profiles. */
   revalueWorth(prices) {
-    const rows = [...prices].map(([id, p]) => [id, p.price, !!p.starter]).sort((a, b) => a[0].localeCompare(b[0]));
-    const version = createHash('sha256').update(JSON.stringify(['sellable-vehicles-v1', WORTH_FRACTION, rows])).digest('hex');
+    const version = 'cash-only-v2';
     const key = 'worth_formula';
     if (this.db.prepare('SELECT v FROM meta WHERE k = ?').get(key)?.v === version) return 0;
     const update = this.db.prepare('UPDATE players SET worth = ? WHERE token_hash = ? AND worth <> ?');
@@ -88,8 +86,7 @@ export class Store {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       for (const r of this.db.prepare('SELECT token_hash, money, owned FROM players').iterate()) {
-        const owned = json(r.owned, []);
-        const worth = netWorth(r.money, Array.isArray(owned) ? owned : [], prices);
+        const worth = cashWorth(r.money);
         changed += update.run(worth, r.token_hash, worth).changes;
       }
       this.db.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)').run(key, version);

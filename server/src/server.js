@@ -78,7 +78,12 @@ export async function startServer(overrides = {}) {
       });
       descs.push(new Promise((res, rej) => {
         g.once('error', rej);
-        g.on('message', (m) => { if (m.t === 'desc') res(m.desc); else if (m.t === 'shot') hub.queueShot(m); });
+        g.on('message', (m) => {
+          if (m.t === 'desc') res(m.desc);
+          else if (m.t === 'shot') hub.queueShot(m);
+          else if (m.t === 'admin-travel') for (const target of gws) target.postMessage(m);
+          else if (m.t === 'admin-travel-result') gws[m.owner]?.postMessage(m);
+        });
       }));
       // a crashed gateway leaves a dangling child app in the acceptor: stop cleanly and let the supervisor restart us
       g.on('error', (e) => { log.error(`gateway ${w} crashed: ${e.stack || e}`); fatal(); });
@@ -119,7 +124,11 @@ export async function startServer(overrides = {}) {
     const vehicles = hubVehicles;
     const gw = new Gateway({
       id: 0, v, cfg, app, db: gwEnd, world: loadWorldData(cfg.worldData, log), vehicles, prices: hubPrices,
-      range: [0, cfg.maxPlayers], log, wardrobe: loadWardrobe(undefined, log), toHub: (m) => { if (m.t === 'shot') hub.queueShot(m); },
+      range: [0, cfg.maxPlayers], log, wardrobe: loadWardrobe(undefined, log), toHub: (m) => {
+        if (m.t === 'shot') hub.queueShot(m);
+        else if (m.t === 'admin-travel') queueMicrotask(() => gw.onAdminTravel(m));
+        else if (m.t === 'admin-travel-result') queueMicrotask(() => gw.onAdminTravelResult(m));
+      },
     });
     for (const port of [cfg.port, ...cfg.extraPorts]) {
       const ls = await new Promise((res) => app.listen(cfg.host, port, res));

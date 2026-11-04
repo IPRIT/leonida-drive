@@ -1,3 +1,5 @@
+> Multiplayer policy (0.12.0): all vehicles are unlocked immediately except the tank ($50,000). Free vehicles cannot be sold. Rankings count cash only. Catalogue pricing, progression tables and historical simulations below describe singleplayer unless explicitly stated otherwise.
+
 # Leonida Drive — game economy
 
 Design goals, in priority order:
@@ -211,7 +213,7 @@ first session of the day, a bank feed card.
 
 ## Leaderboard
 
-Top 10 by **net worth** = cash + 55% of the catalogue price of owned vehicles that can be sold. Free starter vehicles and wardrobe items are excluded. New players therefore start with net worth equal to their cash balance. The Online tab shows the cash/vehicle breakdown. Offline leaderboard rows are recalculated when the formula or price table changes; balances, ownership and progress are preserved.
+Top 10 in multiplayer ranks cash balance only. Garage unlocks and wardrobe items never increase it. Offline cached leaderboard rows are revalued once on upgrade, preserving money, inventory and progress.
 
 ## Online authority (implemented by the server, `src/net` + `server/`)
 

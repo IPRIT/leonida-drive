@@ -852,4 +852,5 @@ export default {
   'mobile.welcomeSub': '☰ — menu và phương tiện · chạm radar — bản đồ',
   'mobile.tapPlayers': 'Chạm — người chơi',
   'mobile.photoHint': 'Kéo để xoay quanh · chụm để thu phóng · hai ngón để di chuyển',
+  'net.adminTravel': "Quản trị viên đã dịch chuyển bạn",
 };

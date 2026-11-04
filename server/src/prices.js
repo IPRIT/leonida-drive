@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { onlineVehiclePrice } from '../../src/economy/online.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const SELL_RATIO = 0.55;
@@ -51,6 +52,7 @@ export function loadPrices(vehicles, file = process.env.PRICES_PATH || path.reso
     if (c) c[1].starter = true;
     if (b) b[1].starter = true;
   }
-  log.info?.(`[prices] ${out.size} prices (${src}), starters: ${[...out].filter(([, p]) => p.starter).map(([id]) => id).join(', ')}`);
+  for (const [id, p] of out) out.set(id, onlineVehiclePrice(id, p));
+  log.info?.(`[prices] ${out.size} vehicles (${src}); open multiplayer garage, tank $50000`);
   return out;
 }

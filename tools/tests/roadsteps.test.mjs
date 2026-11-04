@@ -102,7 +102,7 @@ const lab = (o) => `${o.part}${o.edge !== undefined ? '#' + o.edge : ''}`;
 // between neighbouring rows at the same station, beyond the cross slope trend). Kerbs, parapets and other roads
 // on the carriageway are left out: only this edge's ribbon / junction fills / joints count as its surface.
 const H = 0.5, LAT = 1.5, LIFT = 0.07;
-const sel = R.edges.filter((e) => (ONLY ? String(e.i) === ONLY : e.kind === 1 && !e.runway) && e.len >= 2 && !e.tunnel &&
+const sel = R.edges.filter((e) => (ONLY ? String(e.i) === ONLY : (args.includes('--all') || e.kind === 1) && !e.runway) && e.len >= 2 && !e.tunnel &&
   (!NEAR || e.pts.some((v, k) => k % 2 === 0 && Math.hypot(v - NEAR[0], e.pts[k + 1] - NEAR[1]) < NEAR[2])));
 const steps = [];
 let nS = 0, nMine = 0;

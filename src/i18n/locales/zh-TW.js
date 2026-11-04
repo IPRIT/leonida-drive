@@ -852,4 +852,5 @@ export default {
   'mobile.welcomeSub': '☰ — 選單與載具 · 點按雷達 — 地圖',
   'mobile.tapPlayers': '點按 — 玩家',
   'mobile.photoHint': '拖曳環繞 · 雙指縮放 · 雙指拖曳平移',
+  'net.adminTravel': "管理員已傳送你",
 };

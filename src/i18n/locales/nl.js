@@ -858,4 +858,5 @@ export default {
   'mobile.welcomeSub': '☰ — menu en voertuigen · tik op de radar — kaart',
   'mobile.tapPlayers': 'Tik — spelers',
   'mobile.photoHint': 'Sleep om te draaien · knijp om te zoomen · twee vingers om te verschuiven',
+  'net.adminTravel': "Je bent geteleporteerd door een beheerder",
 };

@@ -852,4 +852,5 @@ export default {
   'mobile.welcomeSub': '☰ — เมนูและยานพาหนะ · แตะเรดาร์ — แผนที่',
   'mobile.tapPlayers': 'แตะ — ผู้เล่น',
   'mobile.photoHint': 'ลากเพื่อหมุนรอบ · จีบนิ้วเพื่อซูม · สองนิ้วเพื่อเลื่อน',
+  'net.adminTravel': "ผู้ดูแลระบบเทเลพอร์ตคุณแล้ว",
 };

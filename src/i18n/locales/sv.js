@@ -858,4 +858,5 @@ export default {
   'mobile.welcomeSub': '☰ — meny och fordon · tryck på radarn — karta',
   'mobile.tapPlayers': 'Tryck — spelare',
   'mobile.photoHint': 'Dra för att rotera · nyp för att zooma · två fingrar för att flytta',
+  'net.adminTravel': "En administratör teleporterade dig",
 };

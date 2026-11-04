@@ -859,4 +859,5 @@ export default {
   'mobile.welcomeSub': '☰ — মেনু ও যানবাহন · রাডারে ট্যাপ করো — ম্যাপ',
   'mobile.tapPlayers': 'ট্যাপ করো — খেলোয়াড়',
   'mobile.photoHint': 'টেনে ঘোরাও · পিঞ্চ করে জুম · দুই আঙুলে সরাও',
+  'net.adminTravel': "প্রশাসক আপনাকে স্থানান্তর করেছেন",
 };

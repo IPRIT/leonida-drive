@@ -7,6 +7,7 @@ import { NAME_MAX, nameFormatError } from '../shared/nicknames.js';
 import { makeT } from '../i18n.js';
 import { createQueueCard } from './QueueCard.js';
 import { Scoreboard } from './Scoreboard.js';
+import { ADMIN_CORRECTION } from '../shared/extensions.js';
 
 const CSS = `
 .ldn-bar{display:flex;align-items:center;gap:8px;justify-content:center;font:500 14px var(--f-ui,'Oswald',sans-serif);color:#fff;
@@ -75,7 +76,7 @@ export class NetUI {
         this._dirtyBoard(); this.tab?.refresh();
       }),
       this.client.on('rank', () => this._dirtyBoard()),
-      this.client.on('correction', () => this._feed(this.t('corrected'), 'info')),
+      this.client.on('correction', (c) => this._feed(this.t(c.reason === ADMIN_CORRECTION ? 'adminTravel' : 'corrected'), 'info')),
       this.client.on('hit', (h) => { if (h.destroyed) this._feed(this.t('destroyed', { name: this._nameOf(h.victim) }), 'player', 3); else this._feed(this.t('hit', { name: this._nameOf(h.victim) }), 'player', 2); }),
       this.client.on('damage', (d) => {
         const name = this._nameOf(d.attacker);
@@ -387,7 +388,6 @@ class OnlineTab {
           ${kv(t('status'), ui._countText())}
           ${kv(t('players'), c.global ? ui._num(c.global.online) : '—')}
           ${kv(t('netWorth'), ui._money(ui.net.economy.worth || ui.net.economy.money))}
-          <div class="muted" data-worth-breakdown style="font-size:13px;margin:6px 0 10px">${esc(t('worthBreakdown', { cash: ui._money(ui.net.economy.money), vehicles: ui._money(Math.max(0, (ui.net.economy.worth || ui.net.economy.money) - ui.net.economy.money)) }))}</div>
           ${rank ? kv(t('leaderboard'), t('yourRank', { rank: ui._num(rank.rank), total: ui._num(rank.total) })) : ''}
           ${kv(t('server'), `${hostOf(c.url)} · ${c.clock.rtt ? t('ping', { ms: Math.round(c.clock.rtt) }) : '—'}`)}
         </div>

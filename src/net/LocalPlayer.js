@@ -7,6 +7,8 @@ import {
 } from './shared/constants.js';
 import { encodeEvent, encodeSpawn } from './shared/protocol.js';
 import { uplinkDue, rememberUplink } from './shared/uplink.js';
+import { ADMIN_CORRECTION } from './shared/extensions.js';
+import { placeVehicleExactly, safeAdminPose } from './placement.js';
 
 const SEND_MS = 50;
 import { PAINT_FINISHES } from '../economy/rules.js';
@@ -154,11 +156,33 @@ export class LocalPlayer {
 
   // ---------------- corrections & restore ----------------
   _correct(c) {
-    this.corrections = (this.corrections || 0) + 1;
+    const admin = c.reason === ADMIN_CORRECTION;
+    if (admin) this.adminTeleports = (this.adminTeleports || 0) + 1;
+    else this.corrections = (this.corrections || 0) + 1;
     this.corr = c.corr;
     this.lastUp = null; // upload the corrected pose right away
-    this.place(c.x, c.y, c.z, c.yaw, false);
-    console.warn('[net] position corrected by the server', c);
+    let destination = c;
+    if (admin) {
+      const g = this.game, p = g.player, focus = p?.focus?.clone?.();
+      if (p?.mode === 'free') p.setFree?.(false);
+      const body = p?.controllable?.body, velocity = body?.linvel?.();
+      body?.setLinvel?.({ x: 0, y: 0, z: 0 }, false);
+      p?.focus?.set?.(c.x, c.y, c.z); g.streaming?.run?.(true); g.streaming?.step?.(Infinity, true);
+      destination = safeAdminPose(g, c);
+      if (!destination) { if (focus) p.focus.copy(focus); if (velocity) body.setLinvel(velocity, true); }
+    }
+    if (destination) this.place(destination.x, destination.y, destination.z, destination.yaw, false);
+    if (admin) {
+      // Acknowledge even in a hidden tab, and bypass the debug loss emulator.
+      // Real TCP still preserves ordering behind earlier states.
+      const s = this.state, now = performance.now();
+      if (this.read(s)) {
+        s.serverClock = this.client.clock.synced;
+        s.t = Math.round(s.serverClock ? this.client.clock.now(now) : now) >>> 0;
+        s.seq = (s.seq + 1) & 0xffff;
+        this.client.sendState(s, true);
+      }
+    } else console.warn('[net] position corrected by the server', c);
   }
 
   /** Put the player at (x, y, z, yaw) in the current vehicle or on foot (no spawn). */
@@ -169,7 +193,7 @@ export class LocalPlayer {
     g.streaming?.run?.(true);
     const v = p.controllable;
     if (v && !onFoot && (p.state === undefined || p.state === 'vehicle')) {
-      v.reset?.(_v.set(x, y, z), yaw);
+      placeVehicleExactly(v, _v.set(x, y, z), yaw, g.terrain);
       (v.camera || p.chase)?.snap?.(v);
     } else if (typeof p.restoreState === 'function') p.restoreState({ x, y, z, yaw, mode: 'foot' });
     else if (typeof p._placeOnFoot === 'function') p._placeOnFoot(x, z, yaw, y, true, true);

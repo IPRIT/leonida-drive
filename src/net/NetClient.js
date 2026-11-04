@@ -17,7 +17,7 @@ import { RadarTracks } from './RadarTracks.js';
 import { nickName } from './shared/nicknames.js';
 import { ClockSync } from './ClockSync.js';
 import { itemOfCode, lookOfCodes } from './shared/outfit-codes.js';
-import { S_FEATURES, S_MAP, S_ADMIN, C_ADMIN, FEATURE, MAP_ORDER, MAP_HEADER, MAP_ENTRY, readMapEntry, readJson, jsonMessage } from './shared/extensions.js';
+import { S_FEATURES, S_MAP, S_ADMIN, C_ADMIN, FEATURE, HF_EXACT_PLACE, MAP_ORDER, MAP_HEADER, MAP_ENTRY, readMapEntry, readJson, jsonMessage } from './shared/extensions.js';
 
 const TOKEN_KEY = 'leonida.mp.token';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
@@ -135,7 +135,7 @@ export class NetClient {
     ws.onopen = () => {
       // after a disconnect, or after playing offline, the player may have moved on: tell the server for how long
       const offS = this.offlineSince ? (performance.now() - this.offlineSince) / 1000 : 0;
-      const flags = (this.token ? HF_TOKEN : 0) | (this.everOnline || this.playedOffline ? HF_RESUME : 0);
+      const flags = HF_EXACT_PLACE | (this.token ? HF_TOKEN : 0) | (this.everOnline || this.playedOffline ? HF_RESUME : 0);
       ws.send(encodeHello(this.token, flags, 1, offS));
       this.bytesOut += 40;
     };
@@ -216,18 +216,18 @@ export class NetClient {
   }
 
   /** STATE upload; skipped when the socket is backed up (a newer state supersedes it anyway). */
-  sendState(s) {
+  sendState(s, reliable = false) {
     const ws = this.ws;
-    if (!ws || ws.readyState !== 1 || !this.welcome || ws.bufferedAmount > 32 << 10) return false;
+    if (!ws || ws.readyState !== 1 || !this.welcome || (!reliable && ws.bufferedAmount > 32 << 10)) return false;
     if (s.ext) {
       writeState(this.stateExtDV, s);
-      if (this.link?.active) this.link.outgoing(this.stateExtBuf.slice(0), (b) => { if (this.ws === ws && ws.readyState === 1 && this.welcome) ws.send(b); });
+      if (!reliable && this.link?.active) this.link.outgoing(this.stateExtBuf.slice(0), (b) => { if (this.ws === ws && ws.readyState === 1 && this.welcome) ws.send(b); });
       else ws.send(this.stateExtBuf);
       this.bytesOut += STATE_EXT_SIZE;
       return true;
     }
     writeState(this.stateDV, s);
-    if (this.link?.active) this.link.outgoing(this.stateBuf.slice(0), (b) => { if (this.ws === ws && ws.readyState === 1 && this.welcome) ws.send(b); });
+    if (!reliable && this.link?.active) this.link.outgoing(this.stateBuf.slice(0), (b) => { if (this.ws === ws && ws.readyState === 1 && this.welcome) ws.send(b); });
     else ws.send(this.stateBuf);
     this.bytesOut += STATE_SIZE;
     return true;
@@ -506,7 +506,8 @@ export class NetClient {
     if (!(this.features & FEATURE.ADMIN)) return Promise.resolve({ ok: false, reason: 'disabled' });
     const id = ++this.adminId;
     return new Promise((resolve) => {
-      const timer = setTimeout(() => { this.adminWait.delete(id); resolve({ ok: false, reason: 'timeout' }); }, 12000);
+      const timer = setTimeout(() => { this.adminWait.delete(id); resolve({ ok: false, reason: 'timeout' }); },
+        op === 'travel_to' || op === 'bring' ? 40000 : 12000);
       this.adminWait.set(id, (r) => { clearTimeout(timer); resolve(r); });
       if (!this.send(jsonMessage(C_ADMIN, { ...values, id, op }))) {
         this.adminWait.get(id)({ ok: false, reason: 'offline' }); this.adminWait.delete(id);

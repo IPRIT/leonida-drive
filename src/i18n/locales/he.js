@@ -866,4 +866,5 @@ export default {
   'mobile.welcomeSub': '☰ — תפריט וכלי רכב · הקש על המכ״ם — מפה',
   'mobile.tapPlayers': 'הקש — שחקנים',
   'mobile.photoHint': 'גרור לסיבוב · צבוט לזום · שתי אצבעות לתזוזה',
+  'net.adminTravel': "הועברת על ידי מנהל",
 };

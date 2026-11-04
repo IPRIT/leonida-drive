@@ -79,6 +79,14 @@ export class Movement {
     // the reported velocity itself must be plausible
     const hs = Math.hypot(s.vx, s.vz);
     if (hs > vmax * 1.3 + 5) return V_SPEED;
+    const travel = this.grace;
+    if (travel?.kind === 'admin-travel' && now <= travel.until && travel.test(s.x, s.z, s, now)) {
+      this.grace = null; this.hn = 0; this.cn = 0; this.lastCrumb = -1e12;
+      this.jumpT = now; this.airExitT = now;
+      this.prevAlt = Math.max(lim.alt, s.y - Math.max(0, this.world.heightAt(s.x, s.z)));
+      this._accept(s, now, true);
+      return V_JUMP;
+    }
     if (!this.placed) { this.place(s.x, s.y, s.z, s.yaw, now); return V_JUMP; }
     const dt = Math.max(0, (now - this.t) / 1000);
     // The newest upload may replace seconds of unsent states under backpressure.

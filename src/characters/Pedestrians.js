@@ -630,6 +630,7 @@ export class Pedestrians {
    * off (trims) and so are stretches where Roads built no sidewalk (another road or a junction underneath).
    */
   _walk(e, side) {
+    if (e.noSidewalk) return null;
     const key = e.i * 2 + (side > 0 ? 1 : 0);
     const W = this._wk;
     const got = W.get(key);

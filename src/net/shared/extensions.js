@@ -1,7 +1,9 @@
 // Optional protocol-5 extensions. Clients only send these after S_FEATURES,
 // so rolling back to an older server never produces unknown client messages.
 export const C_ADMIN = 0x10, S_FEATURES = 0x9b, S_ADMIN = 0x9c, S_MAP = 0x9d;
-export const FEATURE = Object.freeze({ MAP: 1, ADMIN: 2 });
+export const FEATURE = Object.freeze({ MAP: 1, ADMIN: 2, ADMIN_TRAVEL: 4 });
+export const HF_EXACT_PLACE = 0x04;
+export const ADMIN_CORRECTION = 254;
 export const MAP_ORDER = 3, MAP_HEADER = 20, MAP_ENTRY = 20, MAP_PAGE = 1024;
 const enc = new TextEncoder(), dec = new TextDecoder();
 

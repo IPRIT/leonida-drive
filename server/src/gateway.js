@@ -2,7 +2,7 @@
 // decoding/validation of client messages, and publishes the hub's pre-encoded cell buffers to its local pub/sub
 // topics every tick (the transport fans them out in C++; nothing is re-encoded per client).
 import { Buffer } from 'node:buffer';
-import { GRID_CELLS, RADAR_CELLS, KICK } from '../../src/net/shared/constants.js';
+import { GRID_CELLS, RADAR_CELLS, KICK, SLOT_MASK } from '../../src/net/shared/constants.js';
 import { encodeKick, encodeQueue } from '../../src/net/shared/protocol.js';
 import { enter, leave, position, release, etaSec, stats as queueStats, Q_VERSION } from './queue.js';
 import { Session } from './session.js';
@@ -17,6 +17,7 @@ import { loadBlocklist } from './names.js';
 import { setIpSecret, ipForLog } from './privacy.js';
 import { MAP_HEADER, MAP_ENTRY, MAP_PAGE } from '../../src/net/shared/extensions.js';
 import { AdminAuth } from './admin.js';
+import { playerPose, travelDestination } from './admin-travel.js';
 
 export const serverNow = () => performance.timeOrigin + performance.now();
 
@@ -28,6 +29,7 @@ export class Gateway {
     Object.assign(this, { id: o.id, v: o.v, cfg: o.cfg, app: o.app, db: o.db, world: o.world, vehicles: o.vehicles, log: o.log || console });
     setIpSecret(o.cfg.ipHashSecret);
     this.adminAuth = new AdminAuth(o.cfg.adminPasswordHash);
+    this.adminTravelWait = new Map();
     this.toHub = o.toHub || (() => {});
     this.range = o.range;
     this.bySlot = new Map(); // slot → Session (direct hub messages: damage, hit confirmations)
@@ -69,6 +71,35 @@ export class Gateway {
   }
 
   statAdd(i, n) { this.v.stats[this.statBase + i] += n; }
+
+  requestAdminTravel(session, target, bring, id, now) {
+    if (!playerPose(this.v, target)) return Promise.resolve({ ok: false, reason: 'player' });
+    if (this.adminTravelWait.size >= 64) return Promise.resolve({ ok: false, reason: 'busy' });
+    const key = `${session.sid}:${id}`;
+    return new Promise(resolve => {
+      const timer = setTimeout(() => { this.adminTravelWait.delete(key); resolve({ ok: false, reason: 'timeout' }); }, 35000);
+      this.adminTravelWait.set(key, result => { clearTimeout(timer); this.adminTravelWait.delete(key); resolve(result); });
+      this.toHub({ t: 'admin-travel', owner: this.id, sid: session.sid, id, actor: session.netId,
+        mover: bring ? target : session.netId, anchor: bring ? session.netId : target, expires: now + 5000 });
+    });
+  }
+
+  onAdminTravel(m) {
+    const slot = m.mover & SLOT_MASK;
+    if (slot < this.range[0] || slot >= this.range[1]) return;
+    const reply = result => this.toHub({ t: 'admin-travel-result', owner: m.owner, sid: m.sid, id: m.id, result });
+    const now = serverNow(), moving = this.bySlot.get(slot);
+    const anchor = playerPose(this.v, m.anchor), actor = playerPose(this.v, m.actor);
+    if (!moving || moving.netId !== m.mover || !anchor || !actor || now > m.expires) return reply({ ok: false, reason: 'player' });
+    if (!moving.exactPlacement) return reply({ ok: false, reason: 'update' });
+    if (moving.corrPending || moving.travelPending) return reply({ ok: false, reason: 'busy' });
+    if (moving.health <= 0 || now < moving.deadUntil) return reply({ ok: false, reason: 'dead' });
+    const pose = travelDestination(this.world, moving._vclass(), anchor);
+    if (!pose) return reply({ ok: false, reason: 'space' });
+    moving.beginAdminTravel(pose, now, reply);
+  }
+
+  onAdminTravelResult(m) { this.adminTravelWait.get(`${m.sid}:${m.id}`)?.(m.result); }
 
   /** Scheduled server time of tick T (the hub labels every tick with it). */
   tickTime(T) { return this.v.hub[H_T0] + T * this.v.hub[H_TICK_DT]; }

@@ -48,7 +48,7 @@ export class Roads {
         for (let k = 1; k < n; k++) cum[k] = cum[k - 1] + Math.hypot(pts[2 * k] - pts[2 * k - 2], pts[2 * k + 1] - pts[2 * k - 1]);
         // cl: map road class (tools/map_build.py: 0 highway, 1 arterial, 2 street, 3 track, 4 runway, 5 taxiway); rp: highway
         // ramp / connector; end / cds: dead-end treatment from the data pipeline (water stop, paved blend, cul-de-sac bulb)
-        return { i, a: e.a, b: e.b, kind: KIND[e.k], w: e.w, wp: e.wp ? Float32Array.from(e.wp) : null, pts, y, br: e.br ? Uint8Array.from(e.br) : null, len: cum[n - 1], cum, n, cl: e.cl ?? -1, rp: e.rp ?? 0, w0: e.w0 ?? e.w, end: e.end, cds: e.cds };
+        return { i, a: e.a, b: e.b, noSidewalk: !!e.noSidewalk, kind: KIND[e.k], w: e.w, wp: e.wp ? Float32Array.from(e.wp) : null, pts, y, br: e.br ? Uint8Array.from(e.br) : null, len: cum[n - 1], cum, n, cl: e.cl ?? -1, rp: e.rp ?? 0, w0: e.w0 ?? e.w, end: e.end, cds: e.cds };
       });
       // adjacency
       this.adj = this.nodes.map(() => []);
@@ -2413,7 +2413,7 @@ export class Roads {
   }
 
   // (cluster links too: their sides between the two fills are kerbed like any street, corners wrap onto them)
-  sidewalkWidth(e) { return e.sw ? (e.w >= 12.5 ? 3.2 : e.lit ? 2.6 : 2.1) : 0; }
+  sidewalkWidth(e) { return e.sw && !e.noSidewalk ? (e.w >= 12.5 ? 3.2 : e.lit ? 2.6 : 2.1) : 0; }
 
   // widest half-width among the other arms at node ni
   armHw(ni, e) {

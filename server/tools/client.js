@@ -1,7 +1,7 @@
 // Protocol-level Node client (tests, load-test bots). Decodes every server message type; keeps the latest record per
 // remote entity. Uses the `ws` package (installed in server/).
 import WebSocket from 'ws';
-import { S_FEATURES, S_ADMIN, S_MAP, readJson } from '../../src/net/shared/extensions.js';
+import { S_FEATURES, S_ADMIN, S_MAP, HF_EXACT_PLACE, readJson } from '../../src/net/shared/extensions.js';
 import {
   HF_TOKEN, HF_RESUME, S_WELCOME, S_CELL, S_GLOBAL, S_RADAR, S_INFO, S_WALLET, S_RANK, S_PONG, S_SPAWN_ACK, S_CORRECTION, S_NICK,
   S_EVENT, S_KICK, S_NOTICE, S_TICK, S_DENSITY, S_ECON, S_OWNED, S_PROGRESS, STATE_SIZE, STATE_EXT_SIZE, S_FX, S_DAMAGE, S_GARAGE, S_LIST, FX,
@@ -15,13 +15,14 @@ import {
 } from '../../src/net/shared/protocol.js';
 
 export class TestClient {
-  constructor(url, { token = null, origin = 'http://localhost:5317', resume = false, keepRecords = true, localAddress } = {}) {
+  constructor(url, { token = null, origin = 'http://localhost:5317', resume = false, keepRecords = true, localAddress, exactPlacement = true } = {}) {
     this.url = url;
     this.token = token;
     this.origin = origin;
     this.resume = resume;
     this.keepRecords = keepRecords;
     this.localAddress = localAddress;
+    this.exactPlacement = exactPlacement;
     this.handlers = new Map();
     this.records = new Map(); // netId → { ...record, tick }
     this.welcome = null;
@@ -69,7 +70,7 @@ export class TestClient {
       const t = setTimeout(() => { reject(new Error('connect timeout')); ws.terminate(); }, timeoutMs);
       ws.on('open', () => {
         const tok = this.token ? new Uint8Array(this.token) : null;
-        ws.send(encodeHello(tok, (tok ? HF_TOKEN : 0) | (this.resume ? HF_RESUME : 0)));
+        ws.send(encodeHello(tok, (tok ? HF_TOKEN : 0) | (this.resume ? HF_RESUME : 0) | (this.exactPlacement ? HF_EXACT_PLACE : 0)));
       });
       ws.on('message', (data) => this._onMessage(data));
       ws.on('error', (e) => { clearTimeout(t); reject(e); });

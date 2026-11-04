@@ -243,3 +243,9 @@ usually billed per GB (1,000 CCU at 0.7 KB/s ≈ 2.5 GB per hour; at 5 KB/s ≈ 
   `node ../tools/loadtest/hold-slots.mjs --count N` — occupy N places to force a queue in a smoke test.
 - `node ../tools/loadtest/bandwidth-report.mjs [--dump dir]` — per-player downlink on the wire (typical / crowd /
   idle / empty); `node ../tools/loadtest/deflate-measure.mjs dir/crowd.bin` — what permessage-deflate would save.
+
+### Online garage and admin travel (0.3.0)
+
+The online garage grants every ordinary vehicle on login; the tank costs $50,000. Free vehicles are unsellable. Leaderboard worth is the cash balance, including for offline profiles after an idempotent cache migration. No balance reset or gift is applied.
+
+Optional `ADMIN_TRAVEL` capability supports authenticated `travel_to` and `bring` commands using an online player's net ID. The server resolves the target pose, validates session generations and exact-placement support, and waits for the mover's correction acknowledgment. A bounded, one-use relocation grant survives a disconnect during travel. The client checks nearby collision shapes before accepting ground placement; aircraft use exact airborne poses rather than garage runway spawning.

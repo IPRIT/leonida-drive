@@ -872,4 +872,5 @@ export default {
   'mobile.welcomeSub': '☰ — menu a vozidla · klepni na radar — mapa',
   'mobile.tapPlayers': 'Klepni — hráči',
   'mobile.photoHint': 'Táhni pro otáčení · roztažením prstů zoom · dvěma prsty posun',
+  'net.adminTravel': "Správce vás teleportoval",
 };

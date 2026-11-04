@@ -859,4 +859,5 @@ export default {
   'mobile.welcomeSub': '☰ — مینو اور گاڑیاں · ریڈار کو ٹچ کریں — نقشہ',
   'mobile.tapPlayers': 'ٹچ کریں — کھلاڑی',
   'mobile.photoHint': 'گھمانے کے لیے کھینچیں · زوم کے لیے چٹکی · دو انگلیوں سے حرکت',
+  'net.adminTravel': "منتظم نے آپ کو ٹیلی پورٹ کیا",
 };

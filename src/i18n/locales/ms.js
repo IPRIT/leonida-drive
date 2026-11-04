@@ -852,4 +852,5 @@ export default {
   'mobile.welcomeSub': '☰ — menu dan kenderaan · ketik radar — peta',
   'mobile.tapPlayers': 'Ketik — pemain',
   'mobile.photoHint': 'Seret untuk pusing · cubit untuk zum · dua jari untuk gerak',
+  'net.adminTravel': "Anda diteleport oleh pentadbir",
 };

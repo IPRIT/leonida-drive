@@ -39,7 +39,7 @@ test('watercraft may relocate to nearby open water, but cars and remote dry land
   assert.equal(vehicleSpawnDestination({ kind: 'car' }, { x: 0, z: 0 }, wet, runways), null);
 });
 
-test('a purchased airplane can appear on a runway and restore there after reconnect without a freeze', async () => {
+test('a freely unlocked airplane can appear on a runway and restore there after reconnect without a freeze', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'leonida-airspawn-'));
   const dbPath = path.join(tmp, 'profiles.db');
   const port = 32000 + Math.floor(Math.random() * 2000);
@@ -57,7 +57,8 @@ test('a purchased airplane can appear on a runway and restore there after reconn
     await sleep(100);
     const purchase = client.next(S_ECON);
     client.econ(ECON.BUY, model);
-    assert.equal((await purchase).result, ECON_RESULT.OK);
+    assert.equal((await purchase).result, ECON_RESULT.OWNED);
+    assert.equal(client.money ?? client.welcome.money, client.welcome.money, 'the free aircraft never charges the wallet');
     const ack = client.next(S_SPAWN_ACK);
     client.spawn(model, 0xffffff, origin.x, origin.z);
     assert.equal((await ack).code, 0);

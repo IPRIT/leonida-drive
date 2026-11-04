@@ -852,4 +852,5 @@ export default {
   'mobile.welcomeSub': '☰ — メニューと乗り物 · レーダーをタップ — マップ',
   'mobile.tapPlayers': 'タップ — プレイヤー',
   'mobile.photoHint': 'ドラッグで回転 · ピンチでズーム · 2本指で移動',
+  'net.adminTravel': "管理者によりテレポートしました",
 };

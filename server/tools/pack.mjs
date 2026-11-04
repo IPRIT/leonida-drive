@@ -27,7 +27,7 @@ const copy = (rel, filter) => {
   fs.mkdirSync(path.dirname(dst), { recursive: true });
   // never macOS metadata (AppleDouble `._*`, .DS_Store) in the bundle
   const junk = (s) => /^\._|^\.DS_Store$/.test(path.basename(s));
-  fs.cpSync(src, dst, { recursive: true, filter: (s) => !junk(s) && (!filter || filter(path.relative(root, s))) });
+  fs.cpSync(src, dst, { recursive: true, dereference: true, filter: (s) => !junk(s) && (!filter || filter(path.relative(root, s))) });
 };
 
 copy('server/src');
@@ -40,7 +40,7 @@ copy('server/deploy');
 // production dependencies only (uWebSockets.js, ws); drop binaries for other OSes to keep the bundle small
 copy('server/node_modules', (rel) => !/uWebSockets\.js\/uws_(darwin|win32)_/.test(rel) && !/\.bin$/.test(rel));
 copy('src/net/shared');
-for (const f of ['rules.js', 'prices.json', 'wardrobe-prices.json']) copy(`src/economy/${f}`);
+for (const f of ['rules.js', 'online.js', 'prices.json', 'wardrobe-prices.json']) copy(`src/economy/${f}`);
 for (const f of ['wardrobe.js', 'lookcodes.js']) copy(`src/characters/${f}`); // D's catalogue: outfit codes, palettes
 copy('public/data/world.json');
 copy('public/data/height.bin');

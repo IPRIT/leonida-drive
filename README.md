@@ -30,7 +30,7 @@ Choose multiplayer on the start screen. Opening its menu keeps the shared world 
 
 For a sharper view, disable **Dynamic resolution** and set **Resolution scale** between 50% and 200%. Manual 100% uses the display's native resolution. Choose FXAA, SMAA, or hardware-supported MSAA + SMAA separately; the renderer limits oversized buffers to the GPU's capabilities. An overturned car shows an **R** recovery prompt.
 
-Highway elevations are fitted across the whole network, with separate routing levels at 28 crossings. Tests check pavement continuity, bridge clearance and lane coverage. Heights and landmark silhouettes remain a fan reconstruction; they are not official GTA VI map measurements. Online net worth is cash plus the resale value of sellable vehicles; free starter vehicles and clothes do not inflate the leaderboard.
+Highway elevations are fitted across the whole network, with separate routing levels at 28 crossings. Tests check pavement continuity, bridge clearance and lane coverage. Heights and landmark silhouettes remain a fan reconstruction; they are not official GTA VI map measurements. Online rankings use cash balance only. All vehicles are available immediately in multiplayer except the tank, which costs $50,000. Free vehicles cannot be sold.
 
 ## Run locally
 
@@ -78,7 +78,7 @@ For your own hosted server, set `VITE_MP_URL=wss://your-host/ws` when building. 
 
 The **Controls** tab lists vehicle-specific, controller and mobile controls. Teleport and world-time controls are available in singleplayer.
 
-The optional **Control Room** opens after ten quick clicks on the version in **About**. It has live frame-time graphs, an in-game diagnostics overlay, snapshot latency/loss simulation, collider inspection, and cameras for all 28 multilevel crossings. Exported reports contain performance and game-state counters, with no login credentials. **Disable** removes the panel and restores its temporary effects.
+The optional **Debug panel** opens after ten quick clicks on the version in **About**. It has live frame-time graphs, an in-game diagnostics overlay, snapshot latency/loss simulation, collider inspection, and cameras for all 28 multilevel crossings. Exported reports contain performance and game-state counters, with no login credentials. **Disable** removes the panel and restores its temporary effects.
 
 Full-map player updates cover the entire island every two seconds while the map is open. Distant markers share the same smooth tracks as nearby players; screen-space clusters retain player counts without loading distant cars into the 3D scene. Driving is simulated locally, including during reconnection. A connection outage can still hide another player's latest turn; prediction cannot recover information that has not arrived.
 
@@ -156,3 +156,5 @@ Read [LEGAL.md](LEGAL.md) for the complete notice from the About tab, credits an
 **Rights holders, takedown requests and questions:** [help@leonida-drive.io](mailto:help@leonida-drive.io).
 
 **The live project: [leonida-drive.io](https://leonida-drive.io).**
+
+Authenticated administrators can travel to an online player or bring that player to them from **Debug → Admin**. Vehicles travel with their drivers; aircraft arrive airborne. Admin access is checked by the server and expires on reconnect.

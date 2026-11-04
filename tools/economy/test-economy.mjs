@@ -221,7 +221,9 @@ await test('sandbox only in singleplayer; unlock all', async () => {
   const eo = new Economy(go, { storage: new Store(), clock: clockAt(1e12) });
   assert.equal(eo.grant(1000), 0);
   assert.equal(eo.setUnlockAll(true), false);
-  assert.ok(!eo.owns('plane_jet'));
+  assert.ok(eo.owns('plane_jet'));
+  assert.ok(!eo.owns('tank'));
+  assert.equal(eo.sellPrice('plane_jet'),0);
 });
 await test('save / restore round trip, debounced save, external money writes', async () => {
   const store = new Store();
@@ -278,7 +280,7 @@ await test('optimistic claims reconcile with the server', async () => {
   let resolveLast;
   g.net = {
     claim(reason, amount, pos, meta) { calls.push([reason, amount, meta]); return new Promise((res) => { resolveLast = () => { const gr = Math.min(amount, 300); server += gr; res({ granted: gr, money: server }); }; }); },
-    async buy(id) { const p = PRICES[id].price; if (server < p) return { ok: false, reason: 'funds' }; server -= p; return { ok: true, money: server, owned: ['pip', 'kickflip', id] }; },
+    async buy(id) { const p = id === 'tank' ? 50000 : 0; if (server < p) return { ok: false, reason: 'funds' }; server -= p; return { ok: true, money: server, owned: ['pip', 'kickflip', id] }; },
     async sell() { return { ok: false, reason: 'rejected' }; },
     charge() { return null; },
   };
@@ -302,19 +304,19 @@ await test('optimistic claims reconcile with the server', async () => {
   clk.c.t += 7000; e.update(0.016, g);
   assert.equal(e.money, 5300);
   // purchase waits for the server
-  const r = await e.buy('comet');
+  const r = await e.buy('tank');
   assert.equal(r.ok, false); assert.equal(r.reason, 'funds');
   server = 60000;
   e.applyServer({ money: 60000 });
-  assert.equal((await e.buy('comet')).ok, true);
-  assert.equal(e.money, 60000 - PRICES.comet.price);
-  assert.ok(e.owns('comet'));
+  assert.equal((await e.buy('tank')).ok, true);
+  assert.equal(e.money, 60000 - 50000);
+  assert.ok(e.owns('tank'));
   // hospital: predicted locally, the server charges on respawn
   const fee = e.charge('hospital');
-  assert.equal(fee, R.hospitalFee(60000 - PRICES.comet.price));
-  e.applyServer({ money: 60000 - PRICES.comet.price - fee });
+  assert.equal(fee, R.hospitalFee(60000 - 50000));
+  e.applyServer({ money: 60000 - 50000 - fee });
   clk.c.t += 7000; e.update(0.016, g);
-  assert.equal(e.money, 60000 - PRICES.comet.price - fee);
+  assert.equal(e.money, 60000 - 50000 - fee);
 });
 
 await test('online income multiplier: base pay in single, × ONLINE.mult online, caps and bucket agree', () => {

@@ -6,6 +6,7 @@
 // inventory, per-vehicle cosmetics and the wardrobe, so nothing can be replayed or granted client-side. Purchases are
 // atomic: one session per player, single-threaded, persisted immediately.
 import * as R from '../../src/economy/rules.js';
+import { cashWorth } from '../../src/economy/online.js';
 import { CLAIM, WALLET, VCLASS, ECON_RESULT, SERVICE, SERVICE_NAMES } from '../../src/net/shared/constants.js';
 
 export const START_MONEY = R.START_MONEY;
@@ -84,9 +85,9 @@ export class Economy {
   // ---------------- state ----------------
   priceOf(id) { return this.ctx.prices.get(id)?.price ?? 0; }
 
-  /** Cash + the sale value of sellable vehicles; starters and wardrobe do not inflate the leaderboard. */
+  /** Multiplayer ranking tracks cash only, including after an admin unlock. */
   worth() {
-    return R.netWorth(this.money, this.owned, this.ctx.prices);
+    return cashWorth(this.money);
   }
 
   progressJSON() {

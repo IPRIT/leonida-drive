@@ -865,4 +865,5 @@ export default {
   'mobile.welcomeSub': '☰ — menú y vehículos · toca el radar — mapa',
   'mobile.tapPlayers': 'Toca — jugadores',
   'mobile.photoHint': 'Arrastra para orbitar · pellizca para hacer zoom · dos dedos para mover',
+  'net.adminTravel': "Un administrador te ha teletransportado",
 };

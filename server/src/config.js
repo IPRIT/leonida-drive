@@ -51,7 +51,7 @@ export function loadConfig(env = process.env) {
     posFlushMs: Math.max(1000, int(env.POS_FLUSH_MS, 10000)),
     transport: env.TRANSPORT || 'auto', // auto | uws | ws
     logLevel: env.LOG_LEVEL || 'info',
-    version: '0.2.0',
+    version: '0.3.0',
   };
 }
 

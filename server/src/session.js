@@ -25,8 +25,9 @@ import { rankOf, slotName, setSlotName, OUTFIT_STRIDE, JOIN_RING, DAMAGE_STRIDE 
 import { checkName } from './names.js';
 import { ipForLog } from './privacy.js';
 import { outfitCodes, itemOfCode } from '../../src/net/shared/outfit-codes.js';
-import { C_ADMIN, S_ADMIN, S_FEATURES, FEATURE, MAP_ORDER, jsonMessage, readJson } from '../../src/net/shared/extensions.js';
+import { C_ADMIN, S_ADMIN, S_FEATURES, FEATURE, MAP_ORDER, HF_EXACT_PLACE, ADMIN_CORRECTION, jsonMessage, readJson } from '../../src/net/shared/extensions.js';
 import { ADMIN_TTL } from './admin.js';
+import { validTravelGrant, nearTravelDestination } from './admin-travel.js';
 
 export const EV_PAINT = 3; // client event: param = vehicle paint RGB
 
@@ -176,6 +177,7 @@ export class Session {
     this.newToken = token ? null : crypto.randomBytes(32);
     this.hash = crypto.createHash('sha256').update(token || this.newToken).digest();
     this.resume = !!(h.flags & HF_RESUME);
+    this.exactPlacement = !!(h.flags & HF_EXACT_PLACE);
     this.offlineS = this.resume ? Math.min(h.offlineS || 0, 3600) : 0; // played offline (server unreachable) before this
     // admission: in now, or a ticket in the waiting queue (FIFO), or "full, try later" when the queue is full too
     const r = this.gw.enterOrQueue(this, now);
@@ -258,6 +260,7 @@ export class Session {
     this.mv.allowJump('join', now + 30000, (x, z) => gw.cfg.joinAnywhere || Math.hypot(x - base.x, z - base.z) < radius
       || Math.hypot(x - DEFAULT_SPAWN.x, z - DEFAULT_SPAWN.z) < 2000 || hospitals.some((hh) => Math.hypot(x - hh.x, z - hh.z) < 500));
     this._allowVehicleRelocation(this.model, now);
+    this._restoreAdminTravel(now);
     // shared info table
     v.nick[slot] = rec.nickCode;
     v.color[slot] = rec.color;
@@ -284,7 +287,7 @@ export class Session {
       claimsFrozen: this.frozen, token: this.newToken, models: gw.vehicles.list, name: this.customName,
     }));
     this.newToken = null;
-    this.send(jsonMessage(S_FEATURES, { bits: FEATURE.MAP | (gw.adminAuth.enabled ? FEATURE.ADMIN : 0) }));
+    this.send(jsonMessage(S_FEATURES, { bits: FEATURE.MAP | (gw.adminAuth.enabled ? FEATURE.ADMIN | (this.exactPlacement ? FEATURE.ADMIN_TRAVEL : 0) : 0) }));
     if (daily) this.send(encodeWallet(WALLET.GRANTED, 0, this.econ.money, daily.amount, CLAIM.DAILY, 1, this.econ.worth()));
     this._sendOwned();
     this._sendProgress();
@@ -313,7 +316,7 @@ export class Session {
     if (!readState(dv, s)) { this._strike(3, 'state size'); return; }
     if (this.corrPending) {
       if (s.tpc !== this.corr) { // still on the old timeline: ignore until the correction is applied
-        if (now - this.corrPending > 10000) this.kick(KICK.INVALID, 'correction not applied');
+        if (now - this.corrPending > 10000 && !validTravelGrant(this.stats.adminTravel, now)) this.kick(KICK.INVALID, 'correction not applied');
         return;
       }
       this.corrPending = 0;
@@ -336,6 +339,14 @@ export class Session {
     this.mvT = vt;
     const code = this.mv.check(s, vt);
     if (code !== V_OK && code !== V_JUMP) { this._violation(code, now); return; }
+    if (this.stats.adminTravel && (nearTravelDestination(this.stats.adminTravel, s) || !this.travelPending)) {
+      delete this.stats.adminTravel; this.dirtyFast = true;
+      if (this.mv.grace?.kind === 'admin-travel') this.mv.grace = null;
+      this._finishAdminTravel({ ok: true });
+    } else if (this.travelPending) {
+      delete this.stats.adminTravel; this.mv.grace = null; this.dirtyFast = true;
+      this._finishAdminTravel({ ok: false, reason: 'space' });
+    }
     if (code === V_JUMP && this.lastStateT > this.openedAt && this.v.alive[this.slot] === 1) this.tpc = (this.tpc + 1) & 3;
     // sample time: clients synced by ping send server time (exact even with uplink jitter); otherwise map the
     // client clock with a min filter (absorbs queueing jitter, leaves the minimum uplink latency as a constant lag)
@@ -865,6 +876,30 @@ export class Session {
   }
 
   // ---------------- scoreboard pages ----------------
+  _restoreAdminTravel(now) {
+    const grant = this.stats.adminTravel;
+    if (!validTravelGrant(grant, now)) { delete this.stats.adminTravel; return; }
+    const previous = this.mv.grace;
+    this.mv.allowJump('admin-travel', grant.until, (x, z, s, at) => nearTravelDestination(grant, s)
+      || !!(previous && at <= previous.until && previous.test(x, z, s, at)));
+  }
+
+  beginAdminTravel(pose, now, reply) {
+    const grant = { ...pose, model: this.model, until: now + 300000 };
+    this.stats.adminTravel = grant; this._restoreAdminTravel(now);
+    this.corr = (this.corr + 1) & 3; this.corrPending = now;
+    const timer = setTimeout(() => this._finishAdminTravel({ ok: false, reason: 'timeout' }), 30000);
+    this.travelPending = { reply, timer };
+    this.dirtyFast = true; this.gw.flushNow(this); // grant survives a reconnect before the acknowledgement
+    this.send(encodeCorrection(ADMIN_CORRECTION, this.corr, pose.x, pose.y, pose.z, pose.yaw));
+  }
+
+  _finishAdminTravel(result) {
+    const pending = this.travelPending;
+    if (!pending) return;
+    this.travelPending = null; clearTimeout(pending.timer); pending.reply(result);
+  }
+
   async _admin(r, now) {
     if (!r || !Number.isInteger(r.id) || r.id < 1 || r.id > 0xffffffff || typeof r.op !== 'string') return;
     const reply = (value) => { if (!this.closed) this.send(jsonMessage(S_ADMIN, { id: r.id, ...value })); };
@@ -885,6 +920,17 @@ export class Session {
     if (r.op === 'logout') { this.adminUntil = 0; return reply({ ok: true, ttl: 0 }); }
     if (!(now < this.adminUntil)) return reply({ ok: false, reason: 'auth' });
     if (now - (this.adminActionAt || 0) < 500) return reply({ ok: false, reason: 'rate' });
+    if (r.op === 'travel_to' || r.op === 'bring') {
+      if (!this.exactPlacement) return reply({ ok: false, reason: 'update' });
+      if (!Number.isInteger(r.target) || r.target < 1 || r.target > 0xffffff || r.target === this.netId) return reply({ ok: false, reason: 'player' });
+      if (this.corrPending) return reply({ ok: false, reason: 'busy' });
+      this.adminActionAt = now; this.adminPending = true;
+      try {
+        const result = await this.gw.requestAdminTravel(this, r.target, r.op === 'bring', r.id, now);
+        if (result.ok) this.gw.securityLog(this, 'admin', `${r.op} ${r.target}`);
+        return reply(result);
+      } finally { this.adminPending = false; }
+    }
     const e = this.econ;
     if (r.op === 'credit') {
       if (!Number.isSafeInteger(r.amount) || r.amount < 1 || r.amount > 100000000 || e.money + r.amount > 1000000000) return reply({ ok: false, reason: 'amount' });
@@ -1034,6 +1080,7 @@ export class Session {
   onClose() {
     if (this.closed) return;
     this.closed = true;
+    this._finishAdminTravel({ ok: false, reason: 'player' });
     this.gw.leaveQueue(this); // a queued connection gives its place up (no reservation)
     if (this.counted) { this.counted = false; this.gw.releaseCapacity(); }
     this.dropInterest();

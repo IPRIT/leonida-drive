@@ -887,4 +887,5 @@ export default {
   'mobile.welcomeSub': '☰ — القائمة والمركبات · المس الرادار — الخريطة',
   'mobile.tapPlayers': 'المس — اللاعبون',
   'mobile.photoHint': 'اسحب للتدوير · اقرص للتكبير · إصبعان للتحريك',
+  'net.adminTravel': "تم نقلك بواسطة مسؤول",
 };

@@ -11,7 +11,7 @@ import { createQueueCard } from '../net/ui/QueueCard.js';
 
 // Loading tips: keys tip.1 … tip.<TIPS> in the locales. Keep them true to the current game (docs/ECONOMY.md, controls).
 const TIPS = 18;
-const SANDBOX_TIPS = new Set([1, 7]); // map teleport, World tab (weather / time): singleplayer only
+const SANDBOX_TIPS = new Set([1, 3, 7]); // map teleport, World tab (weather / time): singleplayer only
 const ONLINE_TIPS = new Set([14]); // Tab player list: online only
 // keyboard / mouse wording (M, Esc, Space, E, Shift, G, Tab, V/P, double-click): not shown on touch screens
 const KEYBOARD_TIPS = new Set([1, 2, 3, 4, 8, 10, 13, 14, 15]);
@@ -91,7 +91,7 @@ export function showLoading(root) {
   let failed = false;
   const showTip = () => {
     if (failed) return;
-    const params = { amount: i18n.money(COLLECTIBLES.each * incomeScale('collectible', mode === 'online')), price: i18n.money(PRICE_OVERRIDES.tank?.price ?? 1500000) };
+    const params = { amount: i18n.money(COLLECTIBLES.each * incomeScale('collectible', mode === 'online')), price: i18n.money(mode === 'online' ? 50000 : PRICE_OVERRIDES.tank?.price ?? 1500000) };
     tip.innerHTML = `<b>${t('load.tip')}</b> ${t(`tip.${tips[ti % tips.length]}`, params)}`;
   };
   const render = () => {

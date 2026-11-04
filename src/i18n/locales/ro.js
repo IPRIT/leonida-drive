@@ -865,4 +865,5 @@ export default {
   'mobile.welcomeSub': '☰ — meniu și vehicule · atinge radarul — hartă',
   'mobile.tapPlayers': 'Atinge — jucători',
   'mobile.photoHint': 'Trage pentru rotire · ciupește pentru zoom · două degete pentru deplasare',
+  'net.adminTravel': "Un administrator te-a teleportat",
 };

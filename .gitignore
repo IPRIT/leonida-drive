@@ -33,3 +33,6 @@ output/
 qa.html
 src/dev/qa.js
 tools/local/
+
+# Worktrees may share dependency directories through symlinks.
+node_modules

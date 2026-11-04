@@ -23,6 +23,8 @@ const gw = new Gateway({
 parentPort.on('message', (m) => {
   if (m.t === 'tick') gw.onTick(m.T, m.b);
   else if (m.t === 'admit') gw.onAdmit(m.ticket);
+  else if (m.t === 'admin-travel') gw.onAdminTravel(m);
+  else if (m.t === 'admin-travel-result') gw.onAdminTravelResult(m);
   else if (m.t === 'shutdown') parentPort.postMessage({ t: 'drained', saved: gw.shutdown() });
   else if (m.t === 'close') { app.close(); parentPort.postMessage({ t: 'closed' }); }
 });
