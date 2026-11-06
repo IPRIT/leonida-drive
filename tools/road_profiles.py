@@ -59,7 +59,13 @@ class BoundedProfiles:
             max_level_error = float(np.max(violation[self.nseg:stop], initial=0))
             max_floor_error = float(np.max(violation[stop:], initial=0)) / self.floor_scale
             change = float(np.max(np.abs(x - old_x)))
-            if it > 20 and max_grade_error < 0.00015 and max_level_error < 0.003 and max_floor_error < 0.003 and change < 0.001:
+            constraints_met = max_grade_error < 0.00015 and max_level_error < 0.003 and max_floor_error < 0.003
+            # ADMM can keep a sub-millimetre oscillation after all physical constraints
+            # are already satisfied. Do not confuse that numerical tail with an invalid
+            # road profile, but require much tighter residuals for this exit path.
+            settled = change < 0.001 or (change < 0.002 and max_grade_error < 0.00001 and
+                                         max_level_error < 0.0001 and max_floor_error < 0.0001)
+            if it > 20 and constraints_met and settled:
                 break
             if (it + 1) % 200 == 0:
                 print('[profiles] iteration %d grade excess %.6f, level %.4f m, floor %.4f m, change %.5f m' %

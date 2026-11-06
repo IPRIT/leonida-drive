@@ -83,6 +83,7 @@ export class Traffic {
     this._axisX = new THREE.Vector3(1, 0, 0);
     this._axisY = new THREE.Vector3(0, 1, 0);
     this._linVel = { x: 0, y: 0, z: 0 };
+    this._pathPoint = {};
     this._angVel = { x: 0, y: 0, z: 0 };
     this.lights = new TrafficLights(roads, scene);
     this.spawnTimer = 0;
@@ -444,7 +445,9 @@ export class Traffic {
     }
     this.spawnTimer -= dt;
     this.updateParking(dt, focus, camera);
-    if (this.spawnTimer <= 0 && this.agents.filter((a) => !a.crashed && !a.parked).length < this.targetCount) {
+    let drivingCount = 0;
+    for (const a of this.agents) if (!a.crashed && !a.parked) drivingCount++;
+    if (this.spawnTimer <= 0 && drivingCount < this.targetCount) {
       this.spawnTimer = 0.12;
       this.trySpawn(focus, camera);
     }
@@ -568,7 +571,7 @@ export class Traffic {
   }
 
   fixedUpdate(dt) {
-    const P = {};
+    const P = this._pathPoint;
     for (const a of this.agents) {
       if (a.burning && !a.crashed) this.crash(a);
       const b = a.body;
@@ -596,7 +599,10 @@ export class Traffic {
         const dEnd = a.edge.len - this.nodeRadius(this.endNode(a)) - a.s;
         if (a.next && dEnd < 40) vLim = Math.min(vLim, 7 + dEnd * 0.35 + (a.next.straight ? 8 : 0));
       }
-      let acc = IDM.a * (1 - Math.pow(v / Math.max(vLim, 0.5), 4) - Math.pow(sStar / Math.max(a.gap, 0.1), 2));
+      const speedRatio = v / Math.max(vLim, 0.5);
+      const speedRatio2 = speedRatio * speedRatio;
+      const gapRatio = sStar / Math.max(a.gap, 0.1);
+      let acc = IDM.a * (1 - speedRatio2 * speedRatio2 - gapRatio * gapRatio);
       acc = Math.max(-9, Math.min(IDM.a, acc));
       // blocked (pushed away from path): wait
       if (a.err > 1.6) acc = Math.min(acc, -4);

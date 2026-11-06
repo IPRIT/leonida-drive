@@ -26,7 +26,9 @@ CLS = os.path.join(RAW, 'cls')
 OUT = os.path.join(ROOT, 'public', 'data')
 os.makedirs(OUT, exist_ok=True)
 
-MPP, X0, Z0 = 2.0, -11368.0, -11000.0      # mosaic mapping
+MPP = 2.0
+X0 = float(os.environ.get('LEONIDA_X0', -11368.0))
+Z0 = float(os.environ.get('LEONIDA_Z0', -11000.0))  # mosaic mapping
 WX0, WZ0, WX1, WZ1 = -9216.0, -9216.0, 4096.0, 9728.0  # world bounds
 HS = 8.0   # height spacing
 TS = 4.0   # ground texture spacing
@@ -140,7 +142,17 @@ def repair_graph(roads, cls, bridge_mask, height_at):
         edges.append(q)
     H, W = cls.shape
     ev = source_evidence()
-    pix = lambda P: (np.clip(((P[:, 1] - Z0) / MPP).astype(int), 0, H - 1), np.clip(((P[:, 0] - X0) / MPP).astype(int), 0, W - 1))
+    registration = roads.get('registration')
+    world_to_pixel = np.asarray(registration['world_to_classifier_pixel']) if registration else None
+
+    def pix(P):
+        P = np.asarray(P)
+        if world_to_pixel is not None:
+            uv = P @ world_to_pixel[:, :2].T + world_to_pixel[:, 2]
+            return (np.clip(uv[:, 1].astype(int), 0, H - 1),
+                    np.clip(uv[:, 0].astype(int), 0, W - 1))
+        return (np.clip(((P[:, 1] - Z0) / MPP).astype(int), 0, H - 1),
+                np.clip(((P[:, 0] - X0) / MPP).astype(int), 0, W - 1))
 
     def water_at(P):
         iy, ix = pix(P)
@@ -174,12 +186,35 @@ def repair_graph(roads, cls, bridge_mask, height_at):
             out.append(d / (np.hypot(*d) + 1e-9))
         return p[0].copy(), out
 
+    EDGE_CELL = 256.0
+    edge_grid = {}
+    indexed_edges = 0
+
+    def index_new_edges():
+        nonlocal indexed_edges
+        for k in range(indexed_edges, len(edges)):
+            p = edges[k]['p']
+            lo, hi = p.min(0), p.max(0)
+            for gx in range(math.floor(lo[0] / EDGE_CELL), math.floor(hi[0] / EDGE_CELL) + 1):
+                for gz in range(math.floor(lo[1] / EDGE_CELL), math.floor(hi[1] / EDGE_CELL) + 1):
+                    edge_grid.setdefault((gx, gz), []).append(k)
+        indexed_edges = len(edges)
+
+    def edge_candidates(lo, hi):
+        index_new_edges()
+        out = set()
+        for gx in range(math.floor(lo[0] / EDGE_CELL), math.floor(hi[0] / EDGE_CELL) + 1):
+            for gz in range(math.floor(lo[1] / EDGE_CELL), math.floor(hi[1] / EDGE_CELL) + 1):
+                out.update(edge_grid.get((gx, gz), ()))
+        return out
+
     def crosses_other(Q, skip):
         # does the polyline Q cross any other edge (would create an at-grade crossing without a node)?
         lo, hi = Q.min(0) - 1, Q.max(0) + 1
-        for k, e in enumerate(edges):
+        for k in edge_candidates(lo, hi):
             if k in skip:
                 continue
+            e = edges[k]
             p = e['p']
             if (p[:, 0].max() < lo[0]) or (p[:, 0].min() > hi[0]) or (p[:, 1].max() < lo[1]) or (p[:, 1].min() > hi[1]):
                 continue
@@ -210,11 +245,26 @@ def repair_graph(roads, cls, bridge_mask, height_at):
         p, us = end_dirs(i, e['a'] == n)
         ends.append({'n': n, 'e': i, 'p': p, 'us': us, 'u': us[1], 'k': e['k'], 'w': e['w'], 'br': bool(e['br'][0 if e['a'] == n else -1])})
     stats['dead_ends_before'] = len(ends)
+    END_CELL = 160.0
+    end_grid = {}
+    for j, end in enumerate(ends):
+        key = (math.floor(end['p'][0] / END_CELL), math.floor(end['p'][1] / END_CELL))
+        end_grid.setdefault(key, []).append(j)
+
+    def nearby_ends(p, radius=160.0):
+        out = set()
+        for gx in range(math.floor((p[0] - radius) / END_CELL), math.floor((p[0] + radius) / END_CELL) + 1):
+            for gz in range(math.floor((p[1] - radius) / END_CELL), math.floor((p[1] + radius) / END_CELL) + 1):
+                out.update(end_grid.get((gx, gz), ()))
+        return sorted(out)
+
     # 1. facing dead-end pairs
     cands = []
     for i in range(len(ends)):
         A = ends[i]
-        for j in range(i + 1, len(ends)):
+        for j in nearby_ends(A['p']):
+            if j <= i:
+                continue
             B = ends[j]
             if A['e'] == B['e']:
                 continue
@@ -283,7 +333,9 @@ def repair_graph(roads, cls, bridge_mask, height_at):
         if i in used:
             continue
         A = ends[i]
-        for j in range(i + 1, len(ends)):
+        for j in nearby_ends(A['p'], 100.0):
+            if j <= i:
+                continue
             if j in used:
                 continue
             B = ends[j]
@@ -329,7 +381,10 @@ def repair_graph(roads, cls, bridge_mask, height_at):
         if idx in used:
             continue
         best = None
-        for k, e in enumerate(edges):
+        reach = A['p'] + np.array([70.0, 70.0])
+        candidates = edge_candidates(A['p'] - 70.0, reach)
+        for k in sorted(candidates):
+            e = edges[k]
             if k == A['e'] or e.get('gap'):
                 continue
             p = e['p']
@@ -442,9 +497,10 @@ def repair_graph(roads, cls, bridge_mask, height_at):
                     break
                 if _arclen(e['p'])[-1] > 80:
                     continue
-                for k2, e2 in enumerate(edges):
-                    if k2 == k or k2 in drop:
+                for k2 in sorted(edge_candidates(tp - 100.0, tp + 100.0)):
+                    if k2 == k or k2 in drop or k2 >= len(edges):
                         continue
+                    e2 = edges[k2]
                     p2 = e2['p']
                     if np.min(np.hypot(p2[:, 0] - tp[0], p2[:, 1] - tp[1])) > e2['w'] / 2 + 40:
                         continue
@@ -1196,322 +1252,71 @@ def road_attributes(roads, height_at):
     return roads
 
 
-def main():
-    t0 = time.time()
-    cls = np.load(os.path.join(CLS, 'cls.npy'))
-    elev = np.load(os.path.join(CLS, 'elev.npy'))
-    depth = np.load(os.path.join(CLS, 'depth.npy')).astype(np.float32)
-    road_mask = np.load(os.path.join(CLS, 'road_mask.npy'))
-    bridge_mask = np.load(os.path.join(CLS, 'bridge_mask.npy'))
-    roads = json.load(open(os.path.join(CLS, 'roads.json')))
-    blds = json.load(open(os.path.join(CLS, 'buildings.json')))
-    print('loaded', time.time() - t0)
 
-    # ---------------- heightmap (8 m) ----------------
-    water2 = (cls == C['water']) | (bridge_mask & ~(cls == C['land']) & ~(cls == C['beach']) & ~(cls == C['urban']))
-    wfrac, win = block_mean(water2.astype(np.float32), HS)
-    inside = np.zeros_like(wfrac, bool)
-    k = int(HS / MPP)
-    inside[win[0] // k:(win[1] + k - 1) // k, win[2] // k:(win[3] + k - 1) // k] = True
-    wfrac[~inside] = 1.0
-    dsum, _ = block_mean(np.where(cls == C['water'], depth, 0), HS)
-    water = wfrac >= 0.42
-    dep = np.where(water, dsum / np.maximum(wfrac, 1e-3), 0)
-    dep[~inside] = 30
-    # band (nearest land pixel band); non-land classes inherit nearest band
-    # robust band per 8 m cell: median of land pixels in a 12x12 px (24 m) window, then 3x3 median
-    ef = np.where(elev == 255, np.nan, elev.astype(np.float32))
-    k6 = int(HS / MPP)
-    pad_e, _ = None, None
-    n_x, n_z = GW, GH
-    ox, oz = int((WX0 - X0) / MPP), int((WZ0 - Z0) / MPP)
-    big = np.full((n_z * k6 + 8, n_x * k6 + 8), np.nan, np.float32)
-    Hh, Ww = ef.shape
-    sx0, sz0 = max(0, ox - 4), max(0, oz - 4)
-    sx1, sz1 = min(Ww, ox + n_x * k6 + 4), min(Hh, oz + n_z * k6 + 4)
-    big[sz0 - (oz - 4):sz1 - (oz - 4), sx0 - (ox - 4):sx1 - (ox - 4)] = ef[sz0:sz1, sx0:sx1]
-    import warnings
-    warnings.simplefilter('ignore')
-    acc = []
-    for dz in (0, 4, 8):
-        for dx in (0, 4, 8):
-            blk = big[dz:dz + n_z * k6, dx:dx + n_x * k6].reshape(n_z, k6, n_x, k6)
-            acc.append(blk.transpose(0, 2, 1, 3).reshape(n_z, n_x, k6 * k6))
-    med = np.nanmedian(np.concatenate(acc, axis=2), axis=2)
-    el = np.where(np.isnan(med), 255, np.round(med)).astype(np.int16)
-    el = np.where(el == 255, 255, ndi.median_filter(np.where(el == 255, 0, el), size=3)).astype(np.int16)
-    del big, acc, ef
-    # clean land-only bands: drop small regions, then require nesting (band k touches band k-1)
-    el = el.astype(np.int16)
-    el[water] = 255
-    for k2 in range(11, 0, -1):
-        m = el == k2
-        lab2, nl = ndi.label(m)
-        if nl:
-            sizes = ndi.sum(m, lab2, np.arange(1, nl + 1))
-            el[np.isin(lab2, np.nonzero(sizes < 150)[0] + 1)] = 255
-    known = (el != 255) & ~water
-    dist_k, idx = ndi.distance_transform_edt(~known, return_distances=True, return_indices=True)
-    band = el[idx[0], idx[1]]
-    band[(dist_k > 5) | (band == 255)] = 0
-    band[water] = -1
-    for k2 in range(1, 12):
-        m = band == k2
-        lab2, nl = ndi.label(m)
-        if not nl:
-            continue
-        lower = ndi.binary_dilation(band == k2 - 1, iterations=1)
-        touch = np.asarray(ndi.maximum(lower.astype(np.float32), lab2, np.arange(1, nl + 1))) > 0
-        bad = np.isin(lab2, np.nonzero(~touch)[0] + 1)
-        band[bad] = max(0, k2 - 2) if k2 >= 2 else 0
-    band = np.maximum(band, 0).astype(np.int16)
-    lo = np.array(BAND_LO, np.float32)[band]
-    hi = np.array(BAND_HI, np.float32)[band]
-    # coastal plains stay low far from the first contour (Florida is flat)
-    d_up = ndi.distance_transform_edt(band < 1) * HS
-    hi = np.where(band == 0, 3.5 + np.clip((900.0 - d_up) / 900.0, 0, 1) * 13.5, hi)
-    # inland lakes up in the hills would become pits down to sea level: turn them into wet meadows
-    wl, nwl = ndi.label(water)
-    border = set(np.unique(np.concatenate([wl[0], wl[-1], wl[:, 0], wl[:, -1]]))) - {0}
-    ring_lab = np.where(water, 0, ndi.grey_dilation(wl, size=5))
-    ring_band = ndi.maximum((band + 1).astype(np.float32), ring_lab, np.arange(1, nwl + 1))
-    sizes = ndi.sum(water, wl, np.arange(1, nwl + 1))
-    filled = np.zeros_like(water)
-    for li in range(1, nwl + 1):
-        if li in border:
-            continue
-        if sizes[li - 1] > 2500:
-            continue  # real lakes (Lake Leonida) stay
-        if ring_band[li - 1] >= 2:
-            filled |= wl == li
-    water = water & ~filled
-    print('inland lakes filled', int(filled.sum()), 'cells')
-    # shoreline: water depth near coast shallower for smooth beaches
-    dist_land = ndi.distance_transform_edt(water) * HS
-    dep = np.minimum(dep, 0.4 + dist_land * 0.06 + 0.002 * dist_land ** 2)
-    seabed = -np.maximum(dep, 0.4)
-    bandw = np.where(water, -1, np.where(filled, -2, band))  # -2: filled basin, interpolated freely
-    lo = np.where(filled, 0.6, lo)
-    hi = np.where(filled, 460.0, hi)
-    # contour cells: land cells with a different-band land neighbour -> fixed at boundary elevation
-    fixed = water.copy()
-    fval = np.where(water, seabed, 0).astype(np.float32)
-    lo_arr = np.array(BAND_LO, np.float32)
-    for dz, dx in ((0, 1), (1, 0), (0, -1), (-1, 0)):
-        nb = np.roll(np.roll(bandw, dz, 0), dx, 1)
-        m = (bandw >= 0) & (nb >= 0) & (nb != bandw)
-        v = lo_arr[np.maximum(bandw, nb).clip(0)]
-        upd = m & ~fixed
-        fval[upd] = v[upd]
-        fixed |= m
-        coast = (bandw >= 0) & (nb == -1) & ~fixed
-        fval[coast] = 0.6
-        fixed |= coast
-    # domes: analytic bulge per band region (0 at contours, amp at the region core) added after the Laplace solve
-    dome = np.zeros_like(lo)
-    distb = ndi.distance_transform_edt(~fixed)
-    for k2 in range(len(BAND_LO)):
-        m = (bandw == k2) & ~fixed
-        if not m.any():
-            continue
-        lab2, nl = ndi.label(m)
-        if nl == 0:
-            continue
-        R = np.asarray(ndi.maximum(distb, lab2, np.arange(1, nl + 1)), np.float32)
-        higher = ndi.binary_dilation(bandw > k2, iterations=2)
-        has_up = np.asarray(ndi.maximum(higher.astype(np.float32), lab2, np.arange(1, nl + 1)), np.float32) > 0
-        amp_top = 1.6 if k2 == 0 else (BAND_HI[k2] - BAND_LO[k2]) * 0.55
-        amp = np.where(has_up, (1.2 if k2 == 0 else (BAND_HI[k2] - BAND_LO[k2]) * 0.12), amp_top)
-        # small regions get proportionally smaller bumps (~1 m per 6 cells of radius)
-        amp = np.minimum(amp, R / 6.0)
-        t = np.clip(distb[m] / np.maximum(R[lab2[m] - 1], 1.0), 0, 1)
-        dome[m] = amp[lab2[m] - 1] * (t * t * (3 - 2 * t))
-    src = np.zeros_like(lo)
-    print('dome setup', time.time() - t0)
 
-    def jacobi(h, fixed_, fval_, src_, lo_, hi_, iters, scale2):
-        for it in range(iters):
-            p_ = np.pad(h, 1, mode='edge')
-            hn = (p_[:-2, 1:-1] + p_[2:, 1:-1] + p_[1:-1, :-2] + p_[1:-1, 2:] + src_ * scale2) * 0.25
-            h = np.where(fixed_, fval_, np.clip(hn, lo_, hi_))
-        return h
+def collapse_junction_links(roads):
+    """Join the two degree-3 clusters of one raster junction blob.
 
-    def down(arr, f, how):
-        n0, n1 = arr.shape[0] // f * f, arr.shape[1] // f * f
-        v = arr[:n0, :n1].reshape(n0 // f, f, n1 // f, f)
-        return getattr(v, how)(axis=(1, 3))
+    GTADB wide junctions often skeletonise as a 13-15 m internal link rather than
+    one degree-4 node. Only the unambiguous four-arm paved case is collapsed.
+    """
+    nodes = roads['nodes']
+    edges = roads['edges']
+    collapsed = 0
+    while True:
+        adj = [[] for _ in nodes]
+        for i, e in enumerate(edges):
+            adj[e['a']].append(i)
+            adj[e['b']].append(i)
+        choice = None
+        for i, e in enumerate(edges):
+            a, b = e['a'], e['b']
+            if a == b or len(adj[a]) != 3 or len(adj[b]) != 3 or any(e.get('br', [])):
+                continue
+            p = np.asarray(e['p'], dtype=float).reshape(-1, 2)
+            length = float(np.linalg.norm(np.diff(p, axis=0), axis=1).sum())
+            if length > 15:
+                continue
+            external = sorted(set(adj[a] + adj[b]) - {i})
+            if len(external) != 4 or sum(edges[j]['k'] == 'highway' for j in external) < 2:
+                continue
+            if choice is None or length < choice[0]:
+                choice = (length, i, a, b, external)
+        if choice is None:
+            break
+        _, i, a, b, external = choice
+        centre = (np.asarray(nodes[a], float) + np.asarray(nodes[b], float)) * 0.5
+        nodes[a] = centre.tolist()
+        for j in external:
+            e = edges[j]
+            p = np.asarray(e['p'], dtype=float).reshape(-1, 2)
+            if e['a'] == b:
+                e['a'] = a
+                p[0] = centre
+            if e['b'] == b:
+                e['b'] = a
+                p[-1] = centre
+            if e['a'] == a and j != i:
+                p[0] = centre
+            if e['b'] == a and j != i:
+                p[-1] = centre
+            e['p'] = p.tolist()
+        edges.pop(i)
+        collapsed += 1
+    used = sorted({n for e in edges for n in (e['a'], e['b'])})
+    remap = {n: i for i, n in enumerate(used)}
+    roads['nodes'] = [nodes[n] for n in used]
+    for e in edges:
+        e['a'], e['b'] = remap[e['a']], remap[e['b']]
+    print('junction blob links collapsed:', collapsed, flush=True)
+    return roads
 
-    hlvl = None
-    for f, iters in ((16, 900), (8, 500), (4, 300), (2, 200), (1, 160)):
-        if f > 1:
-            fx = down(fixed.astype(np.float32), f, 'mean') > 0.5
-            fv = down(np.where(fixed, fval, 0), f, 'sum') / np.maximum(down(fixed.astype(np.float32), f, 'sum'), 1)
-            lo_f = down(lo, f, 'min')
-            hi_f = down(hi, f, 'max')
-            src_f = down(src, f, 'mean')
-        else:
-            fx, fv, lo_f, hi_f, src_f = fixed, fval, lo, hi, src
-        lo_f = np.where(down(water.astype(np.float32), f, 'mean') > 0.5, -60, lo_f) if f > 1 else np.where(water, -60, lo_f)
-        if hlvl is None:
-            hlvl = np.where(fx, fv, (lo_f + hi_f) / 2)
-        else:
-            hz = ndi.zoom(hlvl, 2, order=1)
-            hlvl = np.zeros(fx.shape, np.float32)
-            hlvl[:min(hz.shape[0], fx.shape[0]), :min(hz.shape[1], fx.shape[1])] = hz[:fx.shape[0], :fx.shape[1]]
-            if hz.shape[0] < fx.shape[0]:
-                hlvl[hz.shape[0]:] = hlvl[hz.shape[0] - 1]
-            if hz.shape[1] < fx.shape[1]:
-                hlvl[:, hz.shape[1]:] = hlvl[:, hz.shape[1] - 1:hz.shape[1]]
-        hlvl = jacobi(hlvl, fx, fv, src_f, lo_f, hi_f, iters, float(f * f))
-        print('  level', f, hlvl.shape, time.time() - t0)
-    h = np.where(water, hlvl, np.clip(hlvl + dome, lo, hi))
-    # soften contour creases on land
-    hs_ = ndi.gaussian_filter(h, 2.2)
-    h = np.where(water, h, np.maximum(hs_, 0.4))
-    # slope limiting: gentle coasts (<= 20 %) and no cliffs anywhere (<= 55 %)
-    dw = ndi.distance_transform_edt(~water) * HS
-    h = np.where(water | (dw > 150), h, np.minimum(h, 0.6 + 0.25 * dw))
-    rise = 0.55 * HS
-    for _ in range(40):
-        lim = ndi.minimum_filter(h, footprint=np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool)) + rise
-        h = np.where(water, h, np.minimum(h, lim))
-    h = np.where(water, h, ndi.gaussian_filter(h, 1.0) * 0.5 + h * 0.5)
-    print('height solve', time.time() - t0, 'range', h.min(), h.max())
 
-    # No flattening under the road raster any more: it pulled the ground towards a 32 m blur of itself, which
-    # raised road-mask strips in valleys / cut them into ridges by metres - grey embankment slabs wherever the
-    # raster had no road ribbon on top. Road profiles are smoothed along the graph instead (pass 2 below) and the
-    # ground is conformed only around real ribbons (terrain conform).
-    # smooth urban
-    urban8 = mosaic_window(np.isin(cls, [C['urban'], C['building'], C['building_blue'], C['paved'], C['apron']]).astype(np.uint8), 0, HS).astype(bool)
-    h = np.where(urban8 & ~water, ndi.gaussian_filter(h, 1.0) * 0.5 + h * 0.5, h)
-    h = np.where(water, np.minimum(h, -0.35), np.maximum(h, 0.35))
-    # vertex grid (GH+1, GW+1): average neighbouring cells
-    hv = np.pad(h, 1, mode='edge')
-    hv = (hv[:-1, :-1] + hv[1:, :-1] + hv[:-1, 1:] + hv[1:, 1:]) / 4
-    # keep land vertices that touch land above water
-    hv_road = hv.copy()  # natural ground (float metres): source of the road profiles
-    hv_land = hv.copy()  # float metres; conformed to the final road profiles after the road pass
-
-    def height_at(x, z):
-        fx = (x - WX0) / HS
-        fz = (z - WZ0) / HS
-        ix = np.clip(np.floor(fx).astype(int), 0, GW - 1)
-        iz = np.clip(np.floor(fz).astype(int), 0, GH - 1)
-        tx = np.clip(fx - ix, 0, 1)
-        tz = np.clip(fz - iz, 0, 1)
-        a = hv_road[iz, ix]
-        b = hv_road[iz, ix + 1]
-        c = hv_road[iz + 1, ix]
-        d = hv_road[iz + 1, ix + 1]
-        return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz
-
-    # ---------------- road graph repair (gaps behind shields / labels / rail lines, tiny fragments) -------------
-    roads, repair_stats = repair_graph(roads, cls, bridge_mask, height_at)
-    if os.environ.get('STOP_AFTER_REPAIR'):  # graph-repair experiments: skip the rest of the export
-        return
-    roads = road_attributes(roads, height_at)
-
-    # ---------------- ground class texture (4 m) ----------------
-    gcls = CLS2G[mosaic_window(cls, C['water'], TS)]
-    if filled.any():
-        f4 = np.repeat(np.repeat(filled, 2, axis=0), 2, axis=1)[:TH, :TW]
-        gcls[f4 & (gcls == G['water'])] = G['wetland']
-    # ---- remove map-label imprints: grey glyph strokes (region / place names printed on the source map) that
-    #      became urban / paved / road texels in the middle of natural land. Anything not backed by a real road
-    #      or building footprint, small and surrounded by nature, is filled with the nearest natural class.
-    sup = Image.new('L', (TW, TH), 0)
-    dr = ImageDraw.Draw(sup)
-    to4 = lambda x, z: ((x - WX0) / TS, (z - WZ0) / TS)
-    for e in roads['edges']:
-        pts = [to4(x, z) for x, z in np.array(e['p']).reshape(-1, 2)]
-        if len(pts) > 1:
-            dr.line(pts, fill=255, width=max(2, int(e['w'] / TS + 4)))
-    for o in blds:
-        pts = [to4(x, z) for x, z in np.array(o['p']).reshape(-1, 2)]
-        if len(pts) > 2:
-            dr.polygon(pts, fill=255)
-    sup = ndi.binary_dilation(np.array(sup) > 0, iterations=2)
-    natural = np.isin(gcls, [G['grass'], G['park'], G['wetland'], G['farm'], G['sand'], G['dirt']])
-    # glyph strokes touching a real road are cut off from it, so they're judged on their own
-    art = np.isin(gcls, [G['urban'], G['paved'], G['building'], G['road']]) & ~sup
-    lab, nlab = ndi.label(art, structure=np.ones((3, 3), bool))
-    if nlab:
-        idx = np.arange(1, nlab + 1)
-        area = ndi.sum(np.ones_like(lab), lab, idx)
-        backed = ndi.sum(sup, lab, idx)
-        ring = ndi.binary_dilation(art, iterations=2) & ~art
-        # natural share of each component's surroundings (ring texels take the nearest component's label)
-        _, (ri, rj) = ndi.distance_transform_edt(lab == 0, return_indices=True)
-        ring_lab = np.where(ring, lab[ri, rj], 0)
-        ring_n = ndi.sum(ring, ring_lab, idx)
-        ring_nat = ndi.sum(ring & natural, ring_lab, idx)
-        nat_share = ring_nat / np.maximum(ring_n, 1)
-        # backed share is measured on the dilated support around the component (art excludes sup itself)
-        near_sup = ndi.binary_dilation(sup, iterations=3) & ~sup
-        backed = ndi.sum(near_sup, lab, idx)
-        kill = (area < 15000) & (backed / np.maximum(area, 1) < 0.12) & (nat_share > 0.55)
-        kill_mask = kill[np.maximum(lab - 1, 0)] & (lab > 0)
-        _, (ni_, nj_) = ndi.distance_transform_edt(~natural, return_indices=True)
-        if os.environ.get('LABEL_DEBUG'):
-            dx, dz = [float(v) for v in os.environ['LABEL_DEBUG'].split(',')]
-            ii, jj = int((dz - WZ0) / TS), int((dx - WX0) / TS)
-            win = lab[ii - 30:ii + 30, jj - 30:jj + 30]
-            for c in sorted(set(win[win > 0].ravel().tolist()))[:12]:
-                k = c - 1
-                print('comp', c, 'area', int(area[k]), 'backed', round(float(backed[k] / max(area[k], 1)), 3), 'nat', round(float(nat_share[k]), 3), 'kill', bool(kill[k]))
-        gcls = np.where(kill_mask, gcls[ni_, nj_], gcls)
-        print('label imprints removed: %d components, %d texels' % (int(kill.sum()), int(kill_mask.sum())))
-    # ---- road-bed texels without a road ribbon on top (pruned skeleton spurs, label gaps, merged lanes) read as
-    #      dark asphalt slabs with no markings. Small ones take the surrounding class; large ones (airfield
-    #      tarmac, plazas) become paved lots.
-    rib = Image.new('L', (TW, TH), 0)
-    dr = ImageDraw.Draw(rib)
-    for e in roads['edges']:
-        pts = [to4(x, z) for x, z in np.array(e['p']).reshape(-1, 2)]
-        if len(pts) > 1:
-            dr.line(pts, fill=255, width=max(2, int(math.ceil(e['w'] / TS)) + 2), joint='curve')
-    rib = np.array(rib) > 0
-    rib_occ = Image.new('L', (TW, TH), 0)  # just the asphalt, for vegetation (no trees on repaired gaps)
-    dr = ImageDraw.Draw(rib_occ)
-    for e in roads['edges']:
-        pts = [to4(x, z) for x, z in np.array(e['p']).reshape(-1, 2)]
-        if len(pts) > 1:
-            dr.line(pts, fill=255, width=max(1, int(round(e['w'] / TS))), joint='curve')
-    rib_occ = np.array(rib_occ) > 0
-    bare = (gcls == G['road']) & ~rib
-    lab, nlab = ndi.label(bare, structure=np.ones((3, 3), bool))
-    if nlab:
-        area = ndi.sum(bare, lab, np.arange(1, nlab + 1)) * TS * TS
-        # only compact areas (aprons, plazas: >= 24 m across somewhere) become paved lots; long thin strips (a lost
-        # second carriageway, a pruned ramp) would read as grey slabs without markings - they take the surroundings
-        half = ndi.distance_transform_edt(bare) * TS
-        thick = np.asarray(ndi.maximum(half, lab, np.arange(1, nlab + 1))) >= 12
-        big = ((area >= 3000) & thick)[np.maximum(lab - 1, 0)] & (lab > 0)
-        _, (ni_, nj_) = ndi.distance_transform_edt(gcls == G['road'], return_indices=True)
-        gcls = np.where(bare & big, G['paved'], np.where(bare, gcls[ni_, nj_], gcls))
-        print('bare road-bed texels: %d -> paved %d, surroundings %d' % (int(bare.sum()), int((bare & big).sum()), int((bare & ~big).sum())))
-    # thin grey strips in open country (the light second carriageway / separator of a merged highway, map
-    # outlines) without a ribbon on them: grey slabs without markings - they take the surrounding natural class
-    natural = np.isin(gcls, [G['grass'], G['park'], G['wetland'], G['farm'], G['sand'], G['dirt']])
-    strip = np.isin(gcls, [G['paved'], G['urban']]) & ~rib
-    lab, nlab = ndi.label(strip, structure=np.ones((3, 3), bool))
-    if nlab:
-        idx = np.arange(1, nlab + 1)
-        half = ndi.distance_transform_edt(strip) * TS
-        thin = np.asarray(ndi.maximum(half, lab, idx)) < 8
-        ring = ndi.binary_dilation(strip, iterations=2) & ~strip
-        _, (ri, rj) = ndi.distance_transform_edt(lab == 0, return_indices=True)
-        ring_lab = np.where(ring, lab[ri, rj], 0)
-        nat = ndi.sum(ring & natural, ring_lab, idx) / np.maximum(ndi.sum(ring, ring_lab, idx), 1)
-        kill = (thin & (nat > 0.6))[np.maximum(lab - 1, 0)] & (lab > 0)
-        _, (ni_, nj_) = ndi.distance_transform_edt(~natural, return_indices=True)
-        gcls = np.where(kill, gcls[ni_, nj_], gcls)
-        print('thin grey strips in open country removed: %d texels' % int(kill.sum()))
-    # under water but very shallow -> keep water class (shader decides colour by height)
-    wgz(os.path.join(OUT, 'ground.bin'), gcls)
-    print('ground', time.time() - t0)
-
+def export_road_graph(roads, height_at, t0=None):
+    """Build and write the complete road graph using the current natural height field."""
+    if t0 is None:
+        t0 = time.time()
+    roads = collapse_junction_links(roads)
     # ---------------- roads ----------------
     # pass 1: resample, ground profile, bridge flags
     import heapq
@@ -1963,6 +1768,14 @@ def main():
     print('roads pts', total_pts, '%.2f MB' % (os.path.getsize(os.path.join(OUT, 'roads.json')) / 1e6), 'water nodes', sum(1 for d in dist if 0 < d < INF),
           'edges with grade > 10%%: %d, > 15%%: %d' % (int((mg > 0.10).sum()), int((mg > 0.15).sum())), time.time() - t0)
 
+
+    return locals()
+
+
+def conform_terrain(hv_land, out_edges, node_y, NN, nodes, t0=None):
+    """Conform only road corridors and write the runtime heightfield."""
+    if t0 is None:
+        t0 = time.time()
     # ---------------- terrain conform: ground follows the final road profiles ----------------
     # Under the asphalt the ground sits 0.12 m below the centreline profile, at the edge 6 cm below, then blends
     # back to the natural terrain over a smooth shoulder. Removes floating road edges and buried kerbs.
@@ -2234,6 +2047,355 @@ def main():
     np.save(os.path.join(CLS, 'height_v.npy'), hv)
     print('terrain conform: %d vertices adjusted, max change %.2f m, %d ribbon samples lowered the ground' % (
         int(near.sum()), float(np.abs(hv_c - hv_land).max()), n_low), time.time() - t0)
+
+
+    return locals()
+def main():
+    t0 = time.time()
+    if os.environ.get('LEONIDA_ROADS_ONLY'):
+        cls = np.load(os.path.join(CLS, 'cls.npy'))
+        bridge_mask = np.load(os.path.join(CLS, 'bridge_mask.npy'))
+        roads = json.load(open(os.path.join(CLS, 'roads.json')))
+        hv_road = np.frombuffer(gzip.decompress(open(os.path.join(OUT, 'height.bin'), 'rb').read()), dtype='<i2').reshape(GH + 1, GW + 1).astype(np.float32) / 10.0
+        def height_at(x, z):
+            fx, fz = (x - WX0) / HS, (z - WZ0) / HS
+            ix = np.clip(np.floor(fx).astype(int), 0, GW - 1)
+            iz = np.clip(np.floor(fz).astype(int), 0, GH - 1)
+            tx, tz = np.clip(fx - ix, 0, 1), np.clip(fz - iz, 0, 1)
+            a, b = hv_road[iz, ix], hv_road[iz, ix + 1]
+            c, d = hv_road[iz + 1, ix], hv_road[iz + 1, ix + 1]
+            return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz
+        roads, repair_stats = repair_graph(roads, cls, bridge_mask, height_at)
+        roads = road_attributes(roads, height_at)
+        road_result = export_road_graph(roads, height_at, t0)
+        conform_terrain(hv_road, road_result['out_edges'], road_result['node_y'],
+                        road_result['NN'], road_result['nodes'], t0)
+        return
+    cls = np.load(os.path.join(CLS, 'cls.npy'))
+    elev = np.load(os.path.join(CLS, 'elev.npy'))
+    depth = np.load(os.path.join(CLS, 'depth.npy')).astype(np.float32)
+    road_mask = np.load(os.path.join(CLS, 'road_mask.npy'))
+    bridge_mask = np.load(os.path.join(CLS, 'bridge_mask.npy'))
+    roads = json.load(open(os.path.join(CLS, 'roads.json')))
+    blds = json.load(open(os.path.join(CLS, 'buildings.json')))
+    print('loaded', time.time() - t0)
+
+    # ---------------- heightmap (8 m) ----------------
+    water2 = (cls == C['water']) | (bridge_mask & ~(cls == C['land']) & ~(cls == C['beach']) & ~(cls == C['urban']))
+    wfrac, win = block_mean(water2.astype(np.float32), HS)
+    inside = np.zeros_like(wfrac, bool)
+    k = int(HS / MPP)
+    inside[win[0] // k:(win[1] + k - 1) // k, win[2] // k:(win[3] + k - 1) // k] = True
+    wfrac[~inside] = 1.0
+    dsum, _ = block_mean(np.where(cls == C['water'], depth, 0), HS)
+    water = wfrac >= 0.42
+    dep = np.where(water, dsum / np.maximum(wfrac, 1e-3), 0)
+    dep[~inside] = 30
+    # band (nearest land pixel band); non-land classes inherit nearest band
+    # robust band per 8 m cell: median of land pixels in a 12x12 px (24 m) window, then 3x3 median
+    ef = np.where(elev == 255, np.nan, elev.astype(np.float32))
+    k6 = int(HS / MPP)
+    pad_e, _ = None, None
+    n_x, n_z = GW, GH
+    ox, oz = int((WX0 - X0) / MPP), int((WZ0 - Z0) / MPP)
+    big = np.full((n_z * k6 + 8, n_x * k6 + 8), np.nan, np.float32)
+    Hh, Ww = ef.shape
+    sx0, sz0 = max(0, ox - 4), max(0, oz - 4)
+    sx1, sz1 = min(Ww, ox + n_x * k6 + 4), min(Hh, oz + n_z * k6 + 4)
+    big[sz0 - (oz - 4):sz1 - (oz - 4), sx0 - (ox - 4):sx1 - (ox - 4)] = ef[sz0:sz1, sx0:sx1]
+    import warnings
+    warnings.simplefilter('ignore')
+    acc = []
+    for dz in (0, 4, 8):
+        for dx in (0, 4, 8):
+            blk = big[dz:dz + n_z * k6, dx:dx + n_x * k6].reshape(n_z, k6, n_x, k6)
+            acc.append(blk.transpose(0, 2, 1, 3).reshape(n_z, n_x, k6 * k6))
+    med = np.nanmedian(np.concatenate(acc, axis=2), axis=2)
+    el = np.where(np.isnan(med), 255, np.round(med)).astype(np.int16)
+    el = np.where(el == 255, 255, ndi.median_filter(np.where(el == 255, 0, el), size=3)).astype(np.int16)
+    del big, acc, ef
+    # clean land-only bands: drop small regions, then require nesting (band k touches band k-1)
+    el = el.astype(np.int16)
+    el[water] = 255
+    for k2 in range(11, 0, -1):
+        m = el == k2
+        lab2, nl = ndi.label(m)
+        if nl:
+            sizes = ndi.sum(m, lab2, np.arange(1, nl + 1))
+            el[np.isin(lab2, np.nonzero(sizes < 150)[0] + 1)] = 255
+    known = (el != 255) & ~water
+    dist_k, idx = ndi.distance_transform_edt(~known, return_distances=True, return_indices=True)
+    band = el[idx[0], idx[1]]
+    band[(dist_k > 5) | (band == 255)] = 0
+    band[water] = -1
+    for k2 in range(1, 12):
+        m = band == k2
+        lab2, nl = ndi.label(m)
+        if not nl:
+            continue
+        lower = ndi.binary_dilation(band == k2 - 1, iterations=1)
+        touch = np.asarray(ndi.maximum(lower.astype(np.float32), lab2, np.arange(1, nl + 1))) > 0
+        bad = np.isin(lab2, np.nonzero(~touch)[0] + 1)
+        band[bad] = max(0, k2 - 2) if k2 >= 2 else 0
+    band = np.maximum(band, 0).astype(np.int16)
+    lo = np.array(BAND_LO, np.float32)[band]
+    hi = np.array(BAND_HI, np.float32)[band]
+    # coastal plains stay low far from the first contour (Florida is flat)
+    d_up = ndi.distance_transform_edt(band < 1) * HS
+    hi = np.where(band == 0, 3.5 + np.clip((900.0 - d_up) / 900.0, 0, 1) * 13.5, hi)
+    # inland lakes up in the hills would become pits down to sea level: turn them into wet meadows
+    wl, nwl = ndi.label(water)
+    border = set(np.unique(np.concatenate([wl[0], wl[-1], wl[:, 0], wl[:, -1]]))) - {0}
+    ring_lab = np.where(water, 0, ndi.grey_dilation(wl, size=5))
+    ring_band = ndi.maximum((band + 1).astype(np.float32), ring_lab, np.arange(1, nwl + 1))
+    sizes = ndi.sum(water, wl, np.arange(1, nwl + 1))
+    filled = np.zeros_like(water)
+    for li in range(1, nwl + 1):
+        if li in border:
+            continue
+        if sizes[li - 1] > 2500:
+            continue  # real lakes (Lake Leonida) stay
+        if ring_band[li - 1] >= 2:
+            filled |= wl == li
+    water = water & ~filled
+    print('inland lakes filled', int(filled.sum()), 'cells')
+    # shoreline: water depth near coast shallower for smooth beaches
+    dist_land = ndi.distance_transform_edt(water) * HS
+    dep = np.minimum(dep, 0.4 + dist_land * 0.06 + 0.002 * dist_land ** 2)
+    seabed = -np.maximum(dep, 0.4)
+    bandw = np.where(water, -1, np.where(filled, -2, band))  # -2: filled basin, interpolated freely
+    lo = np.where(filled, 0.6, lo)
+    hi = np.where(filled, 460.0, hi)
+    # contour cells: land cells with a different-band land neighbour -> fixed at boundary elevation
+    fixed = water.copy()
+    fval = np.where(water, seabed, 0).astype(np.float32)
+    lo_arr = np.array(BAND_LO, np.float32)
+    for dz, dx in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+        nb = np.roll(np.roll(bandw, dz, 0), dx, 1)
+        m = (bandw >= 0) & (nb >= 0) & (nb != bandw)
+        v = lo_arr[np.maximum(bandw, nb).clip(0)]
+        upd = m & ~fixed
+        fval[upd] = v[upd]
+        fixed |= m
+        coast = (bandw >= 0) & (nb == -1) & ~fixed
+        fval[coast] = 0.6
+        fixed |= coast
+    # domes: analytic bulge per band region (0 at contours, amp at the region core) added after the Laplace solve
+    dome = np.zeros_like(lo)
+    distb = ndi.distance_transform_edt(~fixed)
+    for k2 in range(len(BAND_LO)):
+        m = (bandw == k2) & ~fixed
+        if not m.any():
+            continue
+        lab2, nl = ndi.label(m)
+        if nl == 0:
+            continue
+        R = np.asarray(ndi.maximum(distb, lab2, np.arange(1, nl + 1)), np.float32)
+        higher = ndi.binary_dilation(bandw > k2, iterations=2)
+        has_up = np.asarray(ndi.maximum(higher.astype(np.float32), lab2, np.arange(1, nl + 1)), np.float32) > 0
+        amp_top = 1.6 if k2 == 0 else (BAND_HI[k2] - BAND_LO[k2]) * 0.55
+        amp = np.where(has_up, (1.2 if k2 == 0 else (BAND_HI[k2] - BAND_LO[k2]) * 0.12), amp_top)
+        # small regions get proportionally smaller bumps (~1 m per 6 cells of radius)
+        amp = np.minimum(amp, R / 6.0)
+        t = np.clip(distb[m] / np.maximum(R[lab2[m] - 1], 1.0), 0, 1)
+        dome[m] = amp[lab2[m] - 1] * (t * t * (3 - 2 * t))
+    src = np.zeros_like(lo)
+    print('dome setup', time.time() - t0)
+
+    def jacobi(h, fixed_, fval_, src_, lo_, hi_, iters, scale2):
+        for it in range(iters):
+            p_ = np.pad(h, 1, mode='edge')
+            hn = (p_[:-2, 1:-1] + p_[2:, 1:-1] + p_[1:-1, :-2] + p_[1:-1, 2:] + src_ * scale2) * 0.25
+            h = np.where(fixed_, fval_, np.clip(hn, lo_, hi_))
+        return h
+
+    def down(arr, f, how):
+        n0, n1 = arr.shape[0] // f * f, arr.shape[1] // f * f
+        v = arr[:n0, :n1].reshape(n0 // f, f, n1 // f, f)
+        return getattr(v, how)(axis=(1, 3))
+
+    hlvl = None
+    for f, iters in ((16, 900), (8, 500), (4, 300), (2, 200), (1, 160)):
+        if f > 1:
+            fx = down(fixed.astype(np.float32), f, 'mean') > 0.5
+            fv = down(np.where(fixed, fval, 0), f, 'sum') / np.maximum(down(fixed.astype(np.float32), f, 'sum'), 1)
+            lo_f = down(lo, f, 'min')
+            hi_f = down(hi, f, 'max')
+            src_f = down(src, f, 'mean')
+        else:
+            fx, fv, lo_f, hi_f, src_f = fixed, fval, lo, hi, src
+        lo_f = np.where(down(water.astype(np.float32), f, 'mean') > 0.5, -60, lo_f) if f > 1 else np.where(water, -60, lo_f)
+        if hlvl is None:
+            hlvl = np.where(fx, fv, (lo_f + hi_f) / 2)
+        else:
+            hz = ndi.zoom(hlvl, 2, order=1)
+            hlvl = np.zeros(fx.shape, np.float32)
+            hlvl[:min(hz.shape[0], fx.shape[0]), :min(hz.shape[1], fx.shape[1])] = hz[:fx.shape[0], :fx.shape[1]]
+            if hz.shape[0] < fx.shape[0]:
+                hlvl[hz.shape[0]:] = hlvl[hz.shape[0] - 1]
+            if hz.shape[1] < fx.shape[1]:
+                hlvl[:, hz.shape[1]:] = hlvl[:, hz.shape[1] - 1:hz.shape[1]]
+        hlvl = jacobi(hlvl, fx, fv, src_f, lo_f, hi_f, iters, float(f * f))
+        print('  level', f, hlvl.shape, time.time() - t0)
+    h = np.where(water, hlvl, np.clip(hlvl + dome, lo, hi))
+    # soften contour creases on land
+    hs_ = ndi.gaussian_filter(h, 2.2)
+    h = np.where(water, h, np.maximum(hs_, 0.4))
+    # slope limiting: gentle coasts (<= 20 %) and no cliffs anywhere (<= 55 %)
+    dw = ndi.distance_transform_edt(~water) * HS
+    h = np.where(water | (dw > 150), h, np.minimum(h, 0.6 + 0.25 * dw))
+    rise = 0.55 * HS
+    for _ in range(40):
+        lim = ndi.minimum_filter(h, footprint=np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool)) + rise
+        h = np.where(water, h, np.minimum(h, lim))
+    h = np.where(water, h, ndi.gaussian_filter(h, 1.0) * 0.5 + h * 0.5)
+    print('height solve', time.time() - t0, 'range', h.min(), h.max())
+
+    # No flattening under the road raster any more: it pulled the ground towards a 32 m blur of itself, which
+    # raised road-mask strips in valleys / cut them into ridges by metres - grey embankment slabs wherever the
+    # raster had no road ribbon on top. Road profiles are smoothed along the graph instead (pass 2 below) and the
+    # ground is conformed only around real ribbons (terrain conform).
+    # smooth urban
+    urban8 = mosaic_window(np.isin(cls, [C['urban'], C['building'], C['building_blue'], C['paved'], C['apron']]).astype(np.uint8), 0, HS).astype(bool)
+    h = np.where(urban8 & ~water, ndi.gaussian_filter(h, 1.0) * 0.5 + h * 0.5, h)
+    h = np.where(water, np.minimum(h, -0.35), np.maximum(h, 0.35))
+    # vertex grid (GH+1, GW+1): average neighbouring cells
+    hv = np.pad(h, 1, mode='edge')
+    hv = (hv[:-1, :-1] + hv[1:, :-1] + hv[:-1, 1:] + hv[1:, 1:]) / 4
+    # keep land vertices that touch land above water
+    hv_road = hv.copy()  # natural ground (float metres): source of the road profiles
+    hv_land = hv.copy()  # float metres; conformed to the final road profiles after the road pass
+
+    def height_at(x, z):
+        fx = (x - WX0) / HS
+        fz = (z - WZ0) / HS
+        ix = np.clip(np.floor(fx).astype(int), 0, GW - 1)
+        iz = np.clip(np.floor(fz).astype(int), 0, GH - 1)
+        tx = np.clip(fx - ix, 0, 1)
+        tz = np.clip(fz - iz, 0, 1)
+        a = hv_road[iz, ix]
+        b = hv_road[iz, ix + 1]
+        c = hv_road[iz + 1, ix]
+        d = hv_road[iz + 1, ix + 1]
+        return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz
+
+    # ---------------- road graph repair (gaps behind shields / labels / rail lines, tiny fragments) -------------
+    roads, repair_stats = repair_graph(roads, cls, bridge_mask, height_at)
+    if os.environ.get('STOP_AFTER_REPAIR'):  # graph-repair experiments: skip the rest of the export
+        return
+    roads = road_attributes(roads, height_at)
+
+    # ---------------- ground class texture (4 m) ----------------
+    gcls = CLS2G[mosaic_window(cls, C['water'], TS)]
+    if filled.any():
+        f4 = np.repeat(np.repeat(filled, 2, axis=0), 2, axis=1)[:TH, :TW]
+        gcls[f4 & (gcls == G['water'])] = G['wetland']
+    # ---- remove map-label imprints: grey glyph strokes (region / place names printed on the source map) that
+    #      became urban / paved / road texels in the middle of natural land. Anything not backed by a real road
+    #      or building footprint, small and surrounded by nature, is filled with the nearest natural class.
+    sup = Image.new('L', (TW, TH), 0)
+    dr = ImageDraw.Draw(sup)
+    to4 = lambda x, z: ((x - WX0) / TS, (z - WZ0) / TS)
+    for e in roads['edges']:
+        pts = [to4(x, z) for x, z in np.array(e['p']).reshape(-1, 2)]
+        if len(pts) > 1:
+            dr.line(pts, fill=255, width=max(2, int(e['w'] / TS + 4)))
+    for o in blds:
+        pts = [to4(x, z) for x, z in np.array(o['p']).reshape(-1, 2)]
+        if len(pts) > 2:
+            dr.polygon(pts, fill=255)
+    sup = ndi.binary_dilation(np.array(sup) > 0, iterations=2)
+    natural = np.isin(gcls, [G['grass'], G['park'], G['wetland'], G['farm'], G['sand'], G['dirt']])
+    # glyph strokes touching a real road are cut off from it, so they're judged on their own
+    art = np.isin(gcls, [G['urban'], G['paved'], G['building'], G['road']]) & ~sup
+    lab, nlab = ndi.label(art, structure=np.ones((3, 3), bool))
+    if nlab:
+        idx = np.arange(1, nlab + 1)
+        area = ndi.sum(np.ones_like(lab), lab, idx)
+        backed = ndi.sum(sup, lab, idx)
+        ring = ndi.binary_dilation(art, iterations=2) & ~art
+        # natural share of each component's surroundings (ring texels take the nearest component's label)
+        _, (ri, rj) = ndi.distance_transform_edt(lab == 0, return_indices=True)
+        ring_lab = np.where(ring, lab[ri, rj], 0)
+        ring_n = ndi.sum(ring, ring_lab, idx)
+        ring_nat = ndi.sum(ring & natural, ring_lab, idx)
+        nat_share = ring_nat / np.maximum(ring_n, 1)
+        # backed share is measured on the dilated support around the component (art excludes sup itself)
+        near_sup = ndi.binary_dilation(sup, iterations=3) & ~sup
+        backed = ndi.sum(near_sup, lab, idx)
+        kill = (area < 15000) & (backed / np.maximum(area, 1) < 0.12) & (nat_share > 0.55)
+        kill_mask = kill[np.maximum(lab - 1, 0)] & (lab > 0)
+        _, (ni_, nj_) = ndi.distance_transform_edt(~natural, return_indices=True)
+        if os.environ.get('LABEL_DEBUG'):
+            dx, dz = [float(v) for v in os.environ['LABEL_DEBUG'].split(',')]
+            ii, jj = int((dz - WZ0) / TS), int((dx - WX0) / TS)
+            win = lab[ii - 30:ii + 30, jj - 30:jj + 30]
+            for c in sorted(set(win[win > 0].ravel().tolist()))[:12]:
+                k = c - 1
+                print('comp', c, 'area', int(area[k]), 'backed', round(float(backed[k] / max(area[k], 1)), 3), 'nat', round(float(nat_share[k]), 3), 'kill', bool(kill[k]))
+        gcls = np.where(kill_mask, gcls[ni_, nj_], gcls)
+        print('label imprints removed: %d components, %d texels' % (int(kill.sum()), int(kill_mask.sum())))
+    # ---- road-bed texels without a road ribbon on top (pruned skeleton spurs, label gaps, merged lanes) read as
+    #      dark asphalt slabs with no markings. Small ones take the surrounding class; large ones (airfield
+    #      tarmac, plazas) become paved lots.
+    rib = Image.new('L', (TW, TH), 0)
+    dr = ImageDraw.Draw(rib)
+    for e in roads['edges']:
+        pts = [to4(x, z) for x, z in np.array(e['p']).reshape(-1, 2)]
+        if len(pts) > 1:
+            dr.line(pts, fill=255, width=max(2, int(math.ceil(e['w'] / TS)) + 2), joint='curve')
+    rib = np.array(rib) > 0
+    rib_occ = Image.new('L', (TW, TH), 0)  # just the asphalt, for vegetation (no trees on repaired gaps)
+    dr = ImageDraw.Draw(rib_occ)
+    for e in roads['edges']:
+        pts = [to4(x, z) for x, z in np.array(e['p']).reshape(-1, 2)]
+        if len(pts) > 1:
+            dr.line(pts, fill=255, width=max(1, int(round(e['w'] / TS))), joint='curve')
+    rib_occ = np.array(rib_occ) > 0
+    bare = (gcls == G['road']) & ~rib
+    lab, nlab = ndi.label(bare, structure=np.ones((3, 3), bool))
+    if nlab:
+        area = ndi.sum(bare, lab, np.arange(1, nlab + 1)) * TS * TS
+        # only compact areas (aprons, plazas: >= 24 m across somewhere) become paved lots; long thin strips (a lost
+        # second carriageway, a pruned ramp) would read as grey slabs without markings - they take the surroundings
+        half = ndi.distance_transform_edt(bare) * TS
+        thick = np.asarray(ndi.maximum(half, lab, np.arange(1, nlab + 1))) >= 12
+        big = ((area >= 3000) & thick)[np.maximum(lab - 1, 0)] & (lab > 0)
+        _, (ni_, nj_) = ndi.distance_transform_edt(gcls == G['road'], return_indices=True)
+        gcls = np.where(bare & big, G['paved'], np.where(bare, gcls[ni_, nj_], gcls))
+        print('bare road-bed texels: %d -> paved %d, surroundings %d' % (int(bare.sum()), int((bare & big).sum()), int((bare & ~big).sum())))
+    # thin grey strips in open country (the light second carriageway / separator of a merged highway, map
+    # outlines) without a ribbon on them: grey slabs without markings - they take the surrounding natural class
+    natural = np.isin(gcls, [G['grass'], G['park'], G['wetland'], G['farm'], G['sand'], G['dirt']])
+    strip = np.isin(gcls, [G['paved'], G['urban']]) & ~rib
+    lab, nlab = ndi.label(strip, structure=np.ones((3, 3), bool))
+    if nlab:
+        idx = np.arange(1, nlab + 1)
+        half = ndi.distance_transform_edt(strip) * TS
+        thin = np.asarray(ndi.maximum(half, lab, idx)) < 8
+        ring = ndi.binary_dilation(strip, iterations=2) & ~strip
+        _, (ri, rj) = ndi.distance_transform_edt(lab == 0, return_indices=True)
+        ring_lab = np.where(ring, lab[ri, rj], 0)
+        nat = ndi.sum(ring & natural, ring_lab, idx) / np.maximum(ndi.sum(ring, ring_lab, idx), 1)
+        kill = (thin & (nat > 0.6))[np.maximum(lab - 1, 0)] & (lab > 0)
+        _, (ni_, nj_) = ndi.distance_transform_edt(~natural, return_indices=True)
+        gcls = np.where(kill, gcls[ni_, nj_], gcls)
+        print('thin grey strips in open country removed: %d texels' % int(kill.sum()))
+    # under water but very shallow -> keep water class (shader decides colour by height)
+    wgz(os.path.join(OUT, 'ground.bin'), gcls)
+    print('ground', time.time() - t0)
+
+    road_result = export_road_graph(roads, height_at, t0)
+    roads = road_result['roads']
+    out_edges = road_result['out_edges']
+    node_y = road_result['node_y']
+    NN = road_result['NN']
+    nodes = road_result['nodes']
+    dist = road_result['dist']
+    total_pts = road_result['total_pts']
+    geometry_fit = road_result['geometry_fit']
+
+    conform_terrain(hv_land, out_edges, node_y, NN, nodes, t0)
 
     # ---------------- buildings ----------------
     ob = []

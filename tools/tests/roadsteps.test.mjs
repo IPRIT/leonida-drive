@@ -173,6 +173,33 @@ const spots = [];
 for (const f of steps) if (!spots.some((q) => q.edge === f.edge && Math.hypot(q.x - f.x, q.z - f.z) < 6)) spots.push(f);
 // A coarse residual also flags continuous changes of grade on banked bends.
 // Optional 1 cm ray sweep distinguishes actual ledges from those creases.
+const fillNodeAt = (x, z) => {
+  const inside = (ring) => {
+    let v = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i], b = ring[j];
+      if ((a[2] > z) !== (b[2] > z) && x < (b[0] - a[0]) * (z - a[2]) / (b[2] - a[2]) + a[0]) v = !v;
+    }
+    return v;
+  };
+  const fills = [];
+  for (let ni = 0; ni < R.junctions.length; ni++) if (R.junctions[ni]) fills.push([ni, R.junctions[ni].ring]);
+  for (const b of R.bends) fills.push([b.ni, b.ring]);
+  for (const [ni, ring] of fills) if (inside(ring)) return ni;
+  // Rounded dead-end caps are fills too, although they have no stored polygon.
+  for (let ni = 0; ni < R.nodes.length; ni++) if (R.adj[ni].length === 1) {
+    const n = R.nodes[ni], e = R.edges[R.adj[ni][0]];
+    if (Math.hypot(x - n[0], z - n[1]) <= e.w / 2 + 0.5) return ni;
+  }
+  let best = null, bd = 0.25;
+  for (const [ni, ring] of fills) for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[j], b = ring[i], dx = b[0] - a[0], dz = b[2] - a[2], l2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[2]) * dz) / l2));
+    const d = Math.hypot(x - a[0] - dx * t, z - a[2] - dz * t);
+    if (d < bd) { bd = d; best = ni; }
+  }
+  return best;
+};
 if (args.includes('--refine')) for (const f of spots) {
   const e = R.edges[f.edge], p = R.pointAt(e, f.s), high = p.y + 3;
   const dx = f.to.x - f.from.x, dz = f.to.z - f.from.z, len = Math.hypot(dx, dz), n = Math.max(2, Math.ceil(len / 0.01));
@@ -188,12 +215,18 @@ if (args.includes('--refine')) for (const f of spots) {
     prev = q ? { x, z, y: q.y } : null;
   }
   f.jump1cm = +maxJump.toFixed(4);
+  if (f.jump1cm > TH) {
+    f.fillNode = f.jumpAt ? fillNodeAt(f.jumpAt[0], f.jumpAt[1]) : null;
+    f.foreignFill = f.fillNode !== null && f.fillNode !== R.edges[f.edge].a && f.fillNode !== R.edges[f.edge].b;
+  }
 }
 const byEdge = {};
 for (const f of spots) byEdge[f.edge] = (byEdge[f.edge] || 0) + 1;
 const summary = { edges: sel.length, samples: nS, onSurface: nMine, stepSamples: steps.length, spots: spots.length, ramps: spots.filter((f) => f.rp).length,
   over10cm: spots.filter((f) => Math.abs(f.val) > 0.1).length, long: spots.filter((f) => f.dir === 'long').length, lat: spots.filter((f) => f.dir === 'lat').length,
-  ...(args.includes('--refine') ? { verifiedSteps: spots.filter(f => f.jump1cm > TH).length, continuousGradeChanges: spots.filter(f => f.jump1cm <= TH).length } : {}),
+  ...(args.includes('--refine') ? { verifiedSteps: spots.filter(f => f.jump1cm > TH && !f.foreignFill).length,
+    foreignFillSteps: spots.filter(f => f.jump1cm > TH && f.foreignFill).length,
+    continuousGradeChanges: spots.filter(f => f.jump1cm <= TH).length } : {}),
   ms: Math.round(performance.now() - t0) };
 console.log(JSON.stringify(summary));
 for (const f of spots.slice(0, +opt('--top', 25))) console.log(JSON.stringify(f));

@@ -15,7 +15,7 @@ export const HOSPITALS = Object.freeze([
   { id: 'downtown', name: 'Vice City General', area: 'Downtown', x: -560, z: 40, r: 240 },
   { id: 'gellhorn', name: 'Port Gellhorn Regional', area: 'Port Gellhorn', x: -6785, z: -3817, r: 260 },
   { id: 'ambrosia', name: 'Ambrosia Community Hospital', area: 'Ambrosia', x: -3150, z: -4000, r: 260 },
-  { id: 'kalaga', name: 'Kalaga Ranger Clinic', area: 'Mt. Kalaga National Park', x: -3160, z: -7090, r: 300 },
+  { id: 'kalaga', name: 'Kalaga Ranger Clinic', area: 'Mt. Kalaga National Park', x: -3160, z: -7090, r: 600 },
   { id: 'keys', name: 'Key Lento Medical', area: 'Leonida Keys', x: -2182, z: 5572, r: 260 },
 ]);
 
@@ -49,10 +49,10 @@ function hash32(x) {
  * @returns [{ x, y, z, yaw }] — yaw faces the direction of travel of that kerb (right-hand traffic)
  */
 export function buildKerbSlots(edges, o) {
-  const { x: cx, z: cz, r, max = 120, step = 16, spacing = 13, endGap = 16, heightAt = null } = o;
+  const { x: cx, z: cz, r, max = 120, step = 16, spacing = 13, endGap = 16, heightAt = null, kinds = null } = o;
   const cand = [];
   for (const e of edges) {
-    if (e.kind !== KIND_ROAD || e.len < endGap * 2 + 4) continue;
+    if ((kinds ? !kinds.includes(e.kind) : e.kind !== KIND_ROAD) || e.len < endGap * 2 + 4) continue;
     // quick reject: edge bounding circle
     const mx = e.pts[0], mz = e.pts[1];
     if (Math.hypot(mx - cx, mz - cz) > r + e.len) continue;
@@ -107,7 +107,14 @@ const round2 = (v) => Math.round(v * 100) / 100;
 /** All slot sets: { start: [...], hospitals: [{...hospital, slots: [...]}] } (pure). */
 export function buildSpawnSets(edges, heightAt = null) {
   const start = buildKerbSlots(edges, { x: START_AREA.x, z: START_AREA.z, r: START_AREA.r, max: START_AREA.slots, heightAt });
-  const hospitals = HOSPITALS.map((h) => ({ ...h, slots: buildKerbSlots(edges, { x: h.x, z: h.z, r: h.r, max: 16, spacing: 11, heightAt }) }));
+  const hospitals = HOSPITALS.map((h) => {
+    const o = { x: h.x, z: h.z, r: h.r, max: 16, spacing: 11, heightAt };
+    let slots = buildKerbSlots(edges, o);
+    // Remote clinics can front an arterial rather than an urban street. Prefer
+    // ordinary kerbs, but never leave a hospital with no usable respawn points.
+    if (slots.length < 10) slots = buildKerbSlots(edges, { ...o, kinds: [0, 1] });
+    return { ...h, slots };
+  });
   return { start, hospitals };
 }
 

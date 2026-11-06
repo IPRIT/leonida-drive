@@ -17,7 +17,7 @@ from scipy import ndimage as ndi
 
 Image.MAX_IMAGE_PIXELS = None
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RAW = os.path.join(ROOT, 'raw')
+RAW = os.environ.get('LEONIDA_RAW') or os.path.join(ROOT, 'raw')
 OUT = os.environ.get('LEONIDA_CLS') or os.path.join(RAW, 'cls')
 os.makedirs(OUT, exist_ok=True)
 
@@ -139,17 +139,28 @@ def main():
     H, W, _ = a.shape
     print('mosaic', W, H)
     a = a.copy()
-    a[:, :192] = (44, 103, 164)  # legend panel strip -> ocean
-    a[9300:9700, 5650:7400] = (44, 103, 164)  # scale bar
-    # remove the 1 km map grid (2 px lines every 500 px): copy neighbouring pixels
-    for x in range(183, W, 500):
-        if x + 2 < W:
-            a[:, x] = a[:, x - 1]
-            a[:, x + 1] = a[:, x + 2]
-    for y in range(499, H, 500):
-        if y + 2 < H:
-            a[y] = a[y - 1]
-            a[y + 1] = a[y + 2]
+    pixel_x0 = int(os.environ.get('LEONIDA_PIXEL_X0', 0))
+    pixel_y0 = int(os.environ.get('LEONIDA_PIXEL_Y0', 0))
+    if not os.environ.get('LEONIDA_CLASSIFY_NO_LEGEND'):
+        a[:, :192] = (44, 103, 164)  # legend panel strip -> ocean
+    full_gtadb = bool(os.environ.get('LEONIDA_CLASSIFY_FULL'))
+    if not full_gtadb:
+        sy0, sy1 = max(0, 9300 - pixel_y0), min(H, 9700 - pixel_y0)
+        sx0, sx1 = max(0, 5650 - pixel_x0), min(W, 7400 - pixel_x0)
+        if sy1 > sy0 and sx1 > sx0:
+            a[sy0:sy1, sx0:sx1] = (44, 103, 164)  # scale bar in the legacy cropped canvas
+        # Remove the 1 km map grid in legacy global mosaic coordinates. The complete
+        # GTADB canvas has a different origin and is clipped explicitly in roads.py.
+        for gx in range(183, pixel_x0 + W, 500):
+            x = gx - pixel_x0
+            if 1 <= x and x + 2 < W:
+                a[:, x] = a[:, x - 1]
+                a[:, x + 1] = a[:, x + 2]
+        for gy in range(499, pixel_y0 + H, 500):
+            y = gy - pixel_y0
+            if 1 <= y and y + 2 < H:
+                a[y] = a[y - 1]
+                a[y + 1] = a[y + 2]
     r = a[..., 0].astype(np.int16)
     g = a[..., 1].astype(np.int16)
     b = a[..., 2].astype(np.int16)
@@ -204,6 +215,9 @@ def main():
     cls[pal_ok] = bestc[pal_ok]
     cls[land_ok] = C['land']
     elev[~land_ok] = 255
+    # Current YANIS motorways are pale yellow, distinct from the darker beach sand.
+    pale_highway = (r > 235) & (g > 225) & (b >= 150) & (b < 225) & (r - b > 30)
+    cls[pale_highway] = C['highway']
     del best, bestc, beste, rr, gg, bb
 
     # Brown paths enclosed by park green are pedestrian paths (e.g. CACTI),
@@ -231,8 +245,28 @@ def main():
     ys = np.array([40, 30, 20, 13, 9, 6, 4, 2.5, 1.5, 0.8, 0.5], np.float32)
     depth[water] = np.interp(gw, xs, ys)
 
+    # Current YANIS city streets are white too. Connected road carriageways are much larger
+    # than individual label glyphs / route badges, so preserve them before label inpainting.
+    white0 = cls == C['white']
+    wl, wn = ndi.label(white0, structure=np.ones((3, 3)))
+    white_road = np.zeros_like(white0)
+    if wn:
+        wi = np.arange(1, wn + 1)
+        ws = ndi.sum(white0, wl, wi)
+        keep = ws >= 1000
+        for i, sl in enumerate(ndi.find_objects(wl)):
+            if sl is None or keep[i]:
+                continue
+            h, w = sl[0].stop - sl[0].start, sl[1].stop - sl[1].start
+            keep[i] = max(h, w) >= 100 and ws[i] >= 250
+        white_road = keep[np.maximum(wl - 1, 0)] & (wl > 0)
+    cls[white_road] = C['road']
+    road_restore = np.zeros(cls.shape, np.uint8)
+    road_restore[white_road] = C['road']
+    road_restore[pale_highway] = C['highway']
+
     # labels: white glyphs + their dark outlines -> unknown, then inpaint
-    white = cls == C['white']
+    white = (cls == C['white']) & ~white_road
     whiteBig = ndi.binary_opening(white, iterations=1)  # keep only solid white (text fill, shields)
     labelzone = ndi.binary_dilation(white, iterations=3)
     cls[labelzone & ((cls == C['white']) | (cls == C['dark']) | (cls == 0))] = 0
@@ -284,13 +318,17 @@ def main():
     elev = elev[idx[0], idx[1]]
     del idx
     cls = bridge_labels(cls, [(shield, 31)])
+    restore = road_restore > 0
+    cls[restore] = road_restore[restore]
 
     np.save(os.path.join(OUT, 'cls.npy'), cls)
     np.save(os.path.join(OUT, 'elev.npy'), elev)
     np.save(os.path.join(OUT, 'depth.npy'), depth.astype(np.float16))
     np.save(os.path.join(OUT, 'alley.npy'), alley)
-    json.dump({'W': W, 'H': H, 'mpp': 2.0, 'x0': -11368.0, 'z0': -11000.0, 'classes': CLASSES,
-               'elevBands': [m for _, m in ELEV_BANDS], 'tx0': meta['tx0'], 'ty0': meta['ty0']},
+    json.dump({'W': W, 'H': H, 'mpp': 2.0,
+               'x0': float(os.environ.get('LEONIDA_X0', -11368.0)),
+               'z0': float(os.environ.get('LEONIDA_Z0', -11000.0)), 'classes': CLASSES,
+               'elevBands': [m for _, m in ELEV_BANDS], 'tx0': meta.get('tx0', 24), 'ty0': meta.get('ty0', 21)},
               open(os.path.join(OUT, 'meta.json'), 'w'), indent=1)
     counts = np.bincount(cls.ravel(), minlength=20)
     inv = {v: k for k, v in CLASSES.items()}

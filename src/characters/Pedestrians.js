@@ -76,6 +76,11 @@ export class Pedestrians {
     this.stats = { count: 0, near: 0, mid: 0, far: 0, ragdolls: 0, ms: 0, msMax: 0 };
     this.movers = [];
     this._moverPool = [];
+    // Fixed linked-list grid: nearby vehicle rejection without per-frame Map/array allocation.
+    this._moverGrid = new Int16Array(16 * 16);
+    this._moverNext = new Int16Array(512);
+    this._nearMovers = new Int16Array(512);
+    this._gridFocus = { x: 0, z: 0 };
     this.fires = new Map();
     this.time = 0;
     this._tmp = {};
@@ -1040,6 +1045,21 @@ export class Pedestrians {
     }
   }
 
+  _indexMovers(focus) {
+    const grid = this._moverGrid;
+    grid.fill(-1);
+    this._gridFocus.x = focus.x; this._gridFocus.z = focus.z;
+    const M = this.movers, next = this._moverNext;
+    for (let i = 0; i < M.length && i < next.length; i++) {
+      const b = M[i];
+      const gx = Math.floor((b.x - focus.x + 320) / 40);
+      const gz = Math.floor((b.z - focus.z + 320) / 40);
+      if (gx < 0 || gx >= 16 || gz < 0 || gz >= 16) { next[i] = -2; continue; }
+      const cell = gz * 16 + gx;
+      next[i] = grid[cell]; grid[cell] = i;
+    }
+  }
+
   // Per-frame entry point. Never throws: optional systems (player type, traffic, cash, ragdolls, UI) may be
   // missing or different in labs; a failure is logged once and the frame is skipped for the crowd only.
   update(dt, focus, camera, player, night = 0) {
@@ -1095,6 +1115,7 @@ export class Pedestrians {
     if (this.beach.enabled) this._beachUpdate(dt, focus, camera, density);
     this._parkUpdate(dt, focus, density, night); // strollers on the park paths (src/world/Parks.js)
     this._collectMovers(focus, player);
+    this._indexMovers(focus);
     this._fireT = (this._fireT ?? 0) - dt;
     if (this._fireT <= 0 && this.fires.size) {
       this._fireT = 0.5;
@@ -1212,9 +1233,19 @@ export class Pedestrians {
   }
 
   _react(p, dt) {
-    const M = this.movers;
-    for (let k = 0; k < M.length; k++) {
-      const b = M[k];
+    const M = this.movers, near = this._nearMovers;
+    let count = 0;
+    const rx = p.x - this._gridFocus.x + 320, rz = p.z - this._gridFocus.z + 320;
+    const gx = Math.floor(rx / 40), gz = Math.floor(rz / 40);
+    const x1 = gx + (rx - gx * 40 >= 20 ? 1 : -1);
+    const z1 = gz + (rz - gz * 40 >= 20 ? 1 : -1);
+    for (let z = Math.max(0, Math.min(gz, z1)); z <= Math.min(15, Math.max(gz, z1)); z++) {
+      for (let x = Math.max(0, Math.min(gx, x1)); x <= Math.min(15, Math.max(gx, x1)); x++) {
+        for (let k = this._moverGrid[z * 16 + x]; k >= 0; k = this._moverNext[k]) near[count++] = k;
+      }
+    }
+    for (let ii = 0; ii < count; ii++) {
+      const b = M[near[ii]];
       const dx = p.x - b.x, dz = p.z - b.z;
       if (dx * dx + dz * dz > 400) continue;
       if (Math.abs(b.y - (p.y + 0.9)) > 2.6) continue;

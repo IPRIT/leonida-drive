@@ -1404,7 +1404,42 @@ export class Roads {
         const row = this.endRow(a.e, a.end, p, p.tx, p.tz, 1, p.w / 2);
         ring.push(...(a.end === 0 ? [row.r, row.l] : [row.l, row.r]));
       }
-      this.bends.push({ ni, ring, center: [nx, this.nodeY[ni], nz] });
+      // A sloped hairpin needs the same planar seam treatment as a junction.
+      // A horizontal fan through the node otherwise leaves a wheel-catching lip
+      // where its rim meets either graded arm.
+      const M = new Array(9).fill(0), rhs = [0, 0, 0];
+      const add = (x, y, z, w = 1) => {
+        const v = [1, x - nx, z - nz];
+        for (let a = 0; a < 3; a++) { rhs[a] += w * v[a] * y; for (let b = 0; b < 3; b++) M[a * 3 + b] += w * v[a] * v[b]; }
+      };
+      add(nx, this.nodeY[ni], nz, 2);
+      for (const q of ring) add(q[0], q[1] - LIFT, q[2]);
+      const det = (m) => m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+      const D = det(M);
+      let cy = this.nodeY[ni] + LIFT, bendPlane = null;
+      if (Math.abs(D) > 1e-9) {
+        const solve = (k) => { const m = M.slice(); for (let a = 0; a < 3; a++) m[a * 3 + k] = rhs[a]; return det(m) / D; };
+        const a = solve(0), b = solve(1), c = solve(2), at = (x, z) => a + b * (x - nx) + c * (z - nz);
+        let res = Math.abs(at(nx, nz) + LIFT - cy);
+        for (const q of ring) res = Math.max(res, Math.abs(at(q[0], q[2]) + LIFT - q[1]));
+        if (res <= 0.6) {
+          cy = at(nx, nz) + LIFT;
+          bendPlane = { at };
+          for (const arm of arms) {
+            const f = this.endFrame[arm.e.i][arm.end];
+            Object.defineProperty(f, 'plane', { value: bendPlane, enumerable: false, configurable: true });
+            const yl = at(f.l[0], f.l[2]) + LIFT, yr = at(f.r[0], f.r[2]) + LIFT;
+            f.dl = yl - f.l[1]; f.dr = yr - f.r[1];
+            const free = arm.e.len - (this.trims[arm.e.i][0]?.t || 0) - (this.trims[arm.e.i][1]?.t || 0);
+            f.tiltD = Math.min(Math.max(12, 2 * arm.e.w, 75 * Math.max(Math.abs(f.dl), Math.abs(f.dr))), Math.max(0.5, free));
+            f.l[1] = yl; f.r[1] = yr;
+          }
+        }
+      }
+      const bend = { ni, ring, center: [nx, cy - LIFT, nz] };
+      // Runtime-only function: debug/worker snapshots must stay cloneable.
+      Object.defineProperty(bend, 'plane', { value: bendPlane, enumerable: false });
+      this.bends.push(bend);
     }
   }
 
@@ -1873,7 +1908,7 @@ export class Roads {
     for (const B of this.bends || []) {
       for (const ei of this.adj[B.ni]) {
         const e = this.edges[ei], end = e.a === B.ni ? 0 : 1;
-        armStrip(e, end === 0, this.joinTrim[ei][end], null, B.ni);
+        armStrip(e, end === 0, this.joinTrim[ei][end], B.plane, B.ni);
       }
     }
     // The final ribbons can differ from the source height profiles on bends and

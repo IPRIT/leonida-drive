@@ -1,0 +1,250 @@
+{
+  "source": {
+    "name": "GTADB YANIS",
+    "version": "17",
+    "commit": "eff84632cd1686c1f4888d3324c2b0bae2fcbffb",
+    "url": "https://github.com/rolux/gtadb.org/tree/eff84632cd1686c1f4888d3324c2b0bae2fcbffb",
+    "attribution": "gtadb.org and all contributors",
+    "license": "CC BY 4.0"
+  },
+  "graph_edges": 9084,
+  "method": "Independent RGB evidence, connected-component area >=80, source skeleton recall; 1024px tiles; no classifier/LOD input",
+  "precision_graph_to_source": {
+    "samples": 282222,
+    "percentiles_px": [
+      0.0,
+      14.142,
+      71.281,
+      143.39,
+      428.245
+    ],
+    "within": {
+      "2": 0.63325,
+      "4": 0.66316,
+      "8": 0.70557,
+      "16": 0.761
+    }
+  },
+  "recall_source_to_graph": {
+    "samples": 652547,
+    "percentiles_px": [
+      13.0,
+      54.083,
+      151.994,
+      249.162,
+      662.113
+    ],
+    "within": {
+      "2": 0.25704,
+      "4": 0.34105,
+      "8": 0.43541,
+      "16": 0.53182
+    }
+  },
+  "districts": {
+    "Ocean Beach": {
+      "precision": {
+        "samples": 3712,
+        "percentiles_px": [
+          0.0,
+          1.0,
+          5.0,
+          11.0,
+          22.123
+        ],
+        "within": {
+          "2": 0.84914,
+          "4": 0.88631,
+          "8": 0.92942,
+          "16": 0.97333
+        }
+      },
+      "recall": {
+        "samples": 12549,
+        "percentiles_px": [
+          10.817,
+          30.414,
+          53.045,
+          87.652,
+          113.217
+        ],
+        "within": {
+          "2": 0.23038,
+          "4": 0.33429,
+          "8": 0.45143,
+          "16": 0.58228
+        }
+      }
+    },
+    "Port Gellhorn": {
+      "precision": {
+        "samples": 2670,
+        "percentiles_px": [
+          0.0,
+          0.0,
+          18.044,
+          55.35,
+          166.078
+        ],
+        "within": {
+          "2": 0.8221,
+          "4": 0.84382,
+          "8": 0.86779,
+          "16": 0.89438
+        }
+      },
+      "recall": {
+        "samples": 5627,
+        "percentiles_px": [
+          3.606,
+          18.18,
+          43.603,
+          74.291,
+          97.272
+        ],
+        "within": {
+          "2": 0.40554,
+          "4": 0.52941,
+          "8": 0.64404,
+          "16": 0.72863
+        }
+      }
+    },
+    "Stockyard": {
+      "precision": {
+        "samples": 4696,
+        "percentiles_px": [
+          0.0,
+          1.0,
+          2.0,
+          5.453,
+          22.361
+        ],
+        "within": {
+          "2": 0.91163,
+          "4": 0.93974,
+          "8": 0.9638,
+          "16": 0.98339
+        }
+      },
+      "recall": {
+        "samples": 18305,
+        "percentiles_px": [
+          11.662,
+          38.471,
+          71.752,
+          104.623,
+          146.339
+        ],
+        "within": {
+          "2": 0.21218,
+          "4": 0.31724,
+          "8": 0.43518,
+          "16": 0.56498
+        }
+      }
+    },
+    "Mt. Kalaga": {
+      "precision": {
+        "samples": 775,
+        "percentiles_px": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.0
+        ],
+        "within": {
+          "2": 0.99226,
+          "4": 1.0,
+          "8": 1.0,
+          "16": 1.0
+        }
+      },
+      "recall": {
+        "samples": 2611,
+        "percentiles_px": [
+          129.062,
+          241.497,
+          356.18,
+          450.068,
+          496.035
+        ],
+        "within": {
+          "2": 0.2792,
+          "4": 0.29452,
+          "8": 0.32708,
+          "16": 0.36882
+        }
+      }
+    },
+    "Downtown": {
+      "precision": {
+        "samples": 7090,
+        "percentiles_px": [
+          0.0,
+          1.0,
+          5.0,
+          11.045,
+          26.0
+        ],
+        "within": {
+          "2": 0.85726,
+          "4": 0.89097,
+          "8": 0.93329,
+          "16": 0.96601
+        }
+      },
+      "recall": {
+        "samples": 18969,
+        "percentiles_px": [
+          5.0,
+          13.0,
+          26.0,
+          34.059,
+          70.847
+        ],
+        "within": {
+          "2": 0.32991,
+          "4": 0.46787,
+          "8": 0.65217,
+          "16": 0.7924
+        }
+      }
+    },
+    "Key Lento": {
+      "precision": {
+        "samples": 2560,
+        "percentiles_px": [
+          0.0,
+          2.0,
+          38.0,
+          63.292,
+          115.247
+        ],
+        "within": {
+          "2": 0.76211,
+          "4": 0.7918,
+          "8": 0.8207,
+          "16": 0.84453
+        }
+      },
+      "recall": {
+        "samples": 5626,
+        "percentiles_px": [
+          5.521,
+          24.49,
+          54.083,
+          65.987,
+          82.485
+        ],
+        "within": {
+          "2": 0.32492,
+          "4": 0.4417,
+          "8": 0.56665,
+          "16": 0.68112
+        }
+      }
+    }
+  }
+}

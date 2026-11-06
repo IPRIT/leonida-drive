@@ -1,0 +1,36 @@
+{
+  "source": {
+    "name": "GTADB YANIS",
+    "version": "17",
+    "commit": "eff84632cd1686c1f4888d3324c2b0bae2fcbffb",
+    "url": "https://github.com/rolux/gtadb.org/tree/eff84632cd1686c1f4888d3324c2b0bae2fcbffb",
+    "attribution": "gtadb.org and all contributors",
+    "license": "CC BY 4.0"
+  },
+  "ecc_game_map_to_gtadb_transpose": 0.957030,
+  "game_map_to_gtadb_transpose": [
+    [4.00029477, 0.00250612, 1022.08],
+    [-0.00079509, 3.99529097, 770.485622]
+  ],
+  "classifier_pixel_to_gtadb_transpose": [
+    [0.500056927, -0.0000827954813, 1791.21505],
+    [0.000000708721911, 0.500023644, 1123.30096]
+  ],
+  "source_to_source_registration": {
+    "method": "SIFT, 0.72 ratio test, RANSAC affine",
+    "matches": 1583,
+    "inliers": 1518,
+    "median_error_resized_px": 0.30082091,
+    "p90_error_resized_px": 0.72515198,
+    "note": "The classifier and current mosaic share their top-left pixel origin; mask-to-image RANSAC independently measured identity scale with 149 inliers."
+  },
+  "full_canvas": {
+    "size": [10240, 12800],
+    "proxy_origin": [-16532, -13892],
+    "classifier_pixel_to_gtadb_transpose": [[0.5, 0, 0], [0, 0.5, 0]],
+    "road_pixel_extent": [0, 0, 9000, 11800],
+    "note": "Direct 2x raster of the complete GTADB transpose reference; no cropped tile-origin reconstruction."
+  },
+  "game_map_metres_per_pixel": 16,
+  "game_map_world_offset": -9216
+}

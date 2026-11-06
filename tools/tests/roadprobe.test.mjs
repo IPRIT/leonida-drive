@@ -57,9 +57,10 @@ const tBuild = performance.now() - t0;
 // ---- physics world with everything streamed in (exactly the game's colliders) ----
 const W = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
 const grp = (m, f) => (((m & 0xffff) << 16) | (f & 0xffff)) >>> 0;
-const cx = (T.x0 + T.x1) / 2, cz = (T.z0 + T.z1) / 2;
-T.updateColliders(RAPIER, W, cx, cz, 30000, grp(0x1, 0xffff));
-R.updateColliders(RAPIER, W, cx, cz, 30000, grp(0x2, 0xffff), 1e9);
+const cx = NEAR ? NEAR[0] : (T.x0 + T.x1) / 2, cz = NEAR ? NEAR[1] : (T.z0 + T.z1) / 2;
+const physicsRadius = NEAR ? NEAR[2] + 100 : 30000;
+T.updateColliders(RAPIER, W, cx, cz, physicsRadius, grp(0x1, 0xffff));
+R.updateColliders(RAPIER, W, cx, cz, physicsRadius, grp(0x2, 0xffff), 1e9);
 // colliders stream in (src/world/colliderStream.js: only the nearest are built at once): build them all now
 while (T.colStream?.step(1e9, true));
 while (R.colStream?.step(1e9, true));
@@ -75,6 +76,12 @@ const labelOf = new Map();
 for (const [b, list] of own) {
   const pb = R.physBuckets.get(b.key);
   if (!pb) continue;
+  if (NEAR) {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < b.pos.length; i += 3) { const x = b.pos[i], z = b.pos[i + 2]; x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    const r = NEAR[2] + 100;
+    if (x1 < cx - r || x0 > cx + r || z1 < cz - r || z0 > cz + r) continue;
+  }
   const nIdx = b.idx.length / 3, nKerb = (b.kidx?.length || 0) / 3, nAll = pb.idx.length / 3, nApron = pb.nApron || 0;
   const ribEnd = Math.max(...list.map((r) => r[1]));
   const parts = list.map(([a, c, e]) => [a, c, { part: 'ribbon', edge: e }]);
@@ -135,7 +142,8 @@ for (const e of R.edges) {
       const off = side * p.w * 0.25; // lane centre (half of the half-width)
       pts.push({ x: p.x - tz * off, z: p.z + tx * off, yd: p.y, s, edge: e.i });
     }
-    if (pts.some((p) => inNear(p.x, p.z))) paths.push({ type: 'lane', e, kind: e.kind, v: vDesign(e.kind), pts, deadA: R.adj[e.a].length === 1, deadB: R.adj[e.b].length === 1 });
+    const selected = NEAR ? pts.filter((p) => inNear(p.x, p.z)) : pts;
+    if (selected.length) paths.push({ type: 'lane', e, kind: e.kind, v: vDesign(e.kind), pts: selected, deadA: R.adj[e.a].length === 1, deadB: R.adj[e.b].length === 1 });
   }
 }
 // junction crossings: from every arm's inbound lane to every other arm's outbound lane (quadratic through the node)

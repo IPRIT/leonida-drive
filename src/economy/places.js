@@ -6,8 +6,8 @@
 export const DEPOTS = Object.freeze([
   { id: 'portvc', name: 'Port of Vice City Freight', area: 'Port Vice City', x: 600, z: 560 },
   { id: 'stockyard', name: 'Stockyard Freight', area: 'Stockyard', x: -352, z: -1792 },
-  { id: 'vcia', name: 'VCIA Air Cargo', area: 'Vice City International Airport', x: -2396, z: 674 },
-  { id: 'allied', name: 'Allied Crystal Plant', area: 'Ambrosia', x: -2911, z: -3652 },
+  { id: 'vcia', name: 'VCIA Air Cargo', area: 'Vice City International Airport', x: -2500, z: 720 },
+  { id: 'allied', name: 'Allied Crystal Plant', area: 'Ambrosia', x: -2800, z: -3630 },
   { id: 'hamlet', name: 'Hamlet Freight Yard', area: 'Hamlet', x: -2683, z: 3391 },
   { id: 'gellhorn', name: 'Port Gellhorn Freight', area: 'Port Gellhorn', x: -6600, z: -3700 },
 ]);
@@ -20,26 +20,24 @@ export const YARDS = Object.freeze([
 
 export const BODY_SHOPS = Object.freeze([
   { id: 'oceanbeach', name: 'Ocean Beach Body Shop', area: 'Ocean Beach', x: 1778, z: -483 },
-  { id: 'littlecuba', name: 'Little Cuba Auto Body', area: 'Little Cuba', x: -1194, z: -60 },
+  { id: 'littlecuba', name: 'Little Cuba Auto Body', area: 'Little Cuba', x: -1260, z: 0 },
   { id: 'southside', name: 'Southside Paint & Body', area: 'Southside', x: -1777, z: 2059 },
   { id: 'ambrosia', name: 'Ambrosia Garage', area: 'Ambrosia', x: -2769, z: -3882 },
 ]);
 
 export const PLACE_RADIUS = 6; // m: drive into the ring
 
-const KERB_FILTER = (e) => e.kind === 0 && !e.br;
-
 /**
  * Snap an anchor to the kerb lane of the nearest kind-0, non-bridge road. `nearest` = game.roads.nearest (grid index);
  * without it (node tools) the edges are searched brute force — same result. → { x, y, z, yaw, w } or null.
  */
-export function snapToKerb(edges, x, z, maxR = 700, heightAt = null, nearest = null) {
+function snapToKerbFiltered(edges, x, z, maxR, heightAt, nearest, kinds) {
   let best = null, bd = maxR;
   if (nearest) {
-    const n = nearest(x, z, maxR, KERB_FILTER);
+    const n = nearest(x, z, maxR, (e) => kinds.includes(e.kind) && !e.br);
     if (n) best = { e: n.edge, k: n.seg, t: n.t, px: n.x, pz: n.z, tx: n.dir[0], tz: n.dir[1] };
   } else for (const e of edges) {
-    if (e.kind !== 0 || e.br) continue;
+    if (!kinds.includes(e.kind) || e.br) continue;
     for (let k = 0; k < e.n - 1; k++) {
       const ax = e.pts[2 * k], az = e.pts[2 * k + 1], bx = e.pts[2 * k + 2], bz = e.pts[2 * k + 3];
       const dx = bx - ax, dz = bz - az;
@@ -65,6 +63,15 @@ export function snapToKerb(edges, x, z, maxR = 700, heightAt = null, nearest = n
   const y = Math.max(heightAt ? heightAt(sx, sz) : ry, ry, 0);
   const fx = tx * side, fz = tz * side;
   return { x: r1(sx), y: r1(y), z: r1(sz), yaw: Math.round(Math.atan2(-fx, -fz) * 1000) / 1000, w: e.w };
+}
+
+export function snapToKerb(edges, x, z, maxR = 700, heightAt = null, nearest = null) {
+  const street = snapToKerbFiltered(edges, x, z, maxR, heightAt, nearest, [0]);
+  if (street && Math.hypot(street.x - x, street.z - z) < 80) return street;
+  // A depot may front an arterial even when its old district anchor has no urban
+  // street. Keep the marker local and drivable instead of snapping across town.
+  const local = snapToKerbFiltered(edges, x, z, Math.min(80, maxR), heightAt, nearest, [0, 1]);
+  return local || street;
 }
 const r1 = (v) => Math.round(v * 10) / 10;
 

@@ -5,6 +5,7 @@ Output: raw/cls/roads.json (world metres), raw/cls/road_mask.npy, raw/cls/bridge
 LEONIDA_CLS=<dir> reads and writes the cls directory elsewhere.
 Alleys join the graph as narrow streets (k 'road', 4.5-7 m); their edges carry 'al': 1.
 """
+import gc
 import json
 import os
 import sys
@@ -18,7 +19,9 @@ CLS = os.environ.get('LEONIDA_CLS') or os.path.join(ROOT, 'raw', 'cls')
 sys.setrecursionlimit(10000)
 
 ROAD, HIGHWAY, DIRTROAD, WATER = 12, 13, 14, 1
-MPP, X0, Z0 = 2.0, -11368.0, -11000.0
+MPP = 2.0
+X0 = float(os.environ.get('LEONIDA_X0', -11368.0))
+Z0 = float(os.environ.get('LEONIDA_Z0', -11000.0))
 
 
 def px2w(px, py):
@@ -48,8 +51,17 @@ def main():
     cls = np.load(os.path.join(CLS, 'cls.npy'))
     H, W = cls.shape
     mask = (cls == ROAD) | (cls == HIGHWAY) | (cls == DIRTROAD)
+    # Optional source-canvas clip, used to exclude GTADB's legend / thumbnail panel.
+    clip = os.environ.get('LEONIDA_ROAD_CLIP')
+    if clip:
+        x0, y0, x1, y1 = [int(v) for v in clip.split(',')]
+        clipped = np.zeros_like(mask)
+        clipped[max(0, y0):min(H, y1), max(0, x0):min(W, x1)] = mask[max(0, y0):min(H, y1), max(0, x0):min(W, x1)]
+        mask = clipped
     ap = os.path.join(CLS, 'alley.npy')
     alley = np.load(ap) if os.path.exists(ap) else np.zeros_like(mask)
+    if clip:
+        alley &= ndi.binary_dilation(mask, iterations=3)
     # alleys stop one pixel short of the street they leave (the street's anti-aliased rim): the closing joins them
     # Keep source-supported green / paved medians through morphological cleanup:
     # even a one-pixel separator distinguishes two parallel carriageways.
@@ -64,11 +76,15 @@ def main():
     dt = ndi.distance_transform_edt(mask).astype(np.float32)
     skel = skeletonize(mask)
     print('skeleton px', int(skel.sum()), time.time() - t0)
+    del mask, median
+    gc.collect()
 
     water = (cls == WATER).astype(np.float32)
-    wd_small = ndi.gaussian_filter(water, 7)
-    wd_large = ndi.gaussian_filter(water, 18)
+    wd_small = ndi.gaussian_filter(water, 7).astype(np.float16)
+    wd_large = ndi.gaussian_filter(water, 18, output=np.float32).astype(np.float16)
     print('water density', time.time() - t0)
+    del water
+    gc.collect()
 
     # neighbour counts
     k = np.ones((3, 3), np.uint8)
@@ -87,6 +103,8 @@ def main():
     # node centroids
     cent = ndi.center_of_mass(nodepx, lab, range(1, nlab + 1))
     nodes = [(c[1], c[0]) for c in cent]  # (px, py)
+    del nodepx, nb, cent
+    gc.collect()
 
     node_pix = np.flatnonzero(flat_lab)
     edges = []
@@ -218,6 +236,8 @@ def main():
         if not merged:
             break
     print('edges after prune/merge', len(edges), time.time() - t0)
+    del visited, flat_skel, flat_lab, lab, node_pix, rem
+    gc.collect()
 
     flat_cls = cls.ravel()
     flat_alley = alley.ravel()

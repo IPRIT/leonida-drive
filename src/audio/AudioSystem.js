@@ -133,6 +133,13 @@ export class AudioSystem {
   // ---------------- per frame ----------------
   update(dt, game) {
     if (!this.ready) return;
+    // Engine/ambience controls already ramp their AudioParams. Run that control
+    // layer at 30 Hz with accumulated time instead of flooding the audio thread
+    // with duplicate automation on high-refresh displays.
+    this._controlDt = (this._controlDt ?? (1 / 30)) + dt;
+    if (this._controlDt < 1 / 30) return;
+    dt = this._controlDt;
+    this._controlDt = 0;
     const t0 = performance.now();
     game = game || this.game;
     const ts = game?.timeScale ?? 1;
