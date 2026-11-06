@@ -23,6 +23,7 @@ def main():
     ap.add_argument('--source', default=str(ROOT / 'raw/mosaic_nc_z5.png'))
     ap.add_argument('--crop', nargs=4, type=int, required=True, metavar=('X0', 'Y0', 'X1', 'Y1'))
     ap.add_argument('--chunk', type=int, default=2048)
+    ap.add_argument('--mpp', type=float, default=2.0)
     ap.add_argument('--overlap', type=int, default=96)
     ap.add_argument('--work', default='/tmp/leonida-classify')
     ap.add_argument('--origin', nargs=2, type=float, default=[-11368.0, -11000.0], metavar=('X0', 'Z0'))
@@ -36,8 +37,8 @@ def main():
     width, height = x1 - x0, y1 - y0
     cls = np.zeros((height, width), np.uint8)
     alley = np.zeros((height, width), bool)
-    origin_x = args.origin[0] + 2 * x0
-    origin_z = args.origin[1] + 2 * y0
+    origin_x = args.origin[0] + args.mpp * x0
+    origin_z = args.origin[1] + args.mpp * y0
     raw = ROOT / 'raw'
     chunk_image = work / 'mosaic.png'
     for cy, y in enumerate(range(y0, y1, args.chunk)):
@@ -55,8 +56,8 @@ def main():
             env = dict(os.environ,
                        LEONIDA_RAW=str(chunk_raw),
                        LEONIDA_CLS=str(work / 'cls-chunk'),
-                       LEONIDA_X0=str(origin_x + 2 * (xa - x0)),
-                       LEONIDA_Z0=str(origin_z + 2 * (ya - y0)),
+                       LEONIDA_X0=str(origin_x + args.mpp * (xa - x0)),
+                       LEONIDA_Z0=str(origin_z + args.mpp * (ya - y0)),
                        LEONIDA_PIXEL_X0=str(xa), LEONIDA_PIXEL_Y0=str(ya),
                        LEONIDA_CLASSIFY_NO_LEGEND='1')
             print(f'chunk {cy},{cx}: {(xa, ya, xb, yb)}', flush=True)
@@ -74,7 +75,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     np.save(out / 'cls.npy', cls)
     np.save(out / 'alley.npy', alley)
-    meta = {'W': width, 'H': height, 'mpp': 2, 'x0': origin_x, 'z0': origin_z,
+    meta = {'W': width, 'H': height, 'mpp': args.mpp, 'x0': origin_x, 'z0': origin_z,
             'crop': args.crop, 'chunk': args.chunk, 'overlap': args.overlap, 'tx0': 24, 'ty0': 21}
     (out / 'meta.json').write_text(json.dumps(meta, indent=2))
     if args.write_mosaic:

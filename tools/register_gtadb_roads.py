@@ -21,9 +21,25 @@ def main():
     ap.add_argument('--x0', type=float, default=-9368.0)
     ap.add_argument('--z0', type=float, default=-9400.0)
     ap.add_argument('--full-canvas', action='store_true')
+    ap.add_argument('--direct-mpp', type=float, help='Identity vectorizer coordinates with explicit metres/source-pixel')
     args = ap.parse_args()
-    registration = json.loads((ROOT / 'tools/fixes/gtadb-yanis-v17-registration.json').read_text())
     roads = json.loads(Path(args.input).read_text())
+    if args.direct_mpp:
+        if roads.get('registration'):
+            raise SystemExit('Input is already registered; use the unregistered vectorizer output')
+        m = args.direct_mpp
+        F = [[m, 0, args.x0], [0, m, args.z0]]
+        inv = [[1 / m, 0, -args.x0 / m], [0, 1 / m, -args.z0 / m]]
+        result = copy.deepcopy(roads)
+        result['registration'] = {'source': 'GTADB YANIS v17, direct 256px tile assembly',
+                                  'world_to_classifier_pixel': inv, 'classifier_pixel_to_world': F,
+                                  'width_scale': 1.0}
+        output = Path(args.output or args.input)
+        output.write_text(json.dumps(result, separators=(',', ':')))
+        print(json.dumps({'nodes': len(result['nodes']), 'edges': len(result['edges']),
+                          'width_scale': 1.0, 'output': str(output)}, indent=2))
+        return
+    registration = json.loads((ROOT / 'tools/fixes/gtadb-yanis-v17-registration.json').read_text())
     if roads.get('registration'):
         raise SystemExit('Input is already registered; use the unregistered vectorizer output')
     T = np.asarray(registration['game_map_to_gtadb_transpose'], dtype=np.float64)

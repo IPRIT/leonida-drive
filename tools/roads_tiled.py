@@ -89,6 +89,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--origin', nargs=2, type=float, required=True, metavar=('X0', 'Z0'))
     ap.add_argument('--tile', type=int, default=5120)
+    ap.add_argument('--mpp', type=float, default=2.0)
     ap.add_argument('--overlap', type=int, default=192)
     ap.add_argument('--work', default='/tmp/leonida-road-vector')
     args = ap.parse_args()
@@ -112,14 +113,14 @@ def main():
             tile.mkdir(exist_ok=True)
             np.save(tile / 'cls.npy', cls[ya:yb, xa:xb])
             np.save(tile / 'alley.npy', alley[ya:yb, xa:xb])
-            env = dict(os.environ, LEONIDA_CLS=str(tile),
-                       LEONIDA_X0=str(args.origin[0] + 2 * xa), LEONIDA_Z0=str(args.origin[1] + 2 * ya),
-                       LEONIDA_ROAD_CLIP=f'0,0,{max(0, 9000 - xa)},{max(0, 11800 - ya)}')
+            env = dict(os.environ, LEONIDA_CLS=str(tile), LEONIDA_MPP=str(args.mpp),
+                       LEONIDA_X0=str(args.origin[0] + args.mpp * xa), LEONIDA_Z0=str(args.origin[1] + args.mpp * ya),
+                       LEONIDA_ROAD_CLIP=f'0,0,{W},{H}')
             print(f'vector tile {tile_id} core={(cx, cy, x1, y1)} source={(xa, ya, xb, yb)}', flush=True)
             subprocess.run([sys.executable, str(ROOT / 'tools/roads.py')], cwd=ROOT, env=env, check=True)
             roads = json.loads((tile / 'roads.json').read_text())
-            rect = (args.origin[0] + 2 * cx, args.origin[1] + 2 * cy,
-                    args.origin[0] + 2 * x1, args.origin[1] + 2 * y1)
+            rect = (args.origin[0] + args.mpp * cx, args.origin[1] + args.mpp * cy,
+                    args.origin[0] + args.mpp * x1, args.origin[1] + args.mpp * y1)
             for edge in roads['edges']:
                 for part in clip_edge(edge, rect):
                     part['_tile'] = tile_id

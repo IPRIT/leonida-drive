@@ -26,7 +26,7 @@ CLS = os.path.join(RAW, 'cls')
 OUT = os.path.join(ROOT, 'public', 'data')
 os.makedirs(OUT, exist_ok=True)
 
-MPP = 2.0
+MPP = float(os.environ.get('LEONIDA_MPP', '2'))
 X0 = float(os.environ.get('LEONIDA_X0', -11368.0))
 Z0 = float(os.environ.get('LEONIDA_Z0', -11000.0))  # mosaic mapping
 WX0, WZ0, WX1, WZ1 = -9216.0, -9216.0, 4096.0, 9728.0  # world bounds

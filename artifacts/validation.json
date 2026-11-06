@@ -1,282 +1,282 @@
 {
-  "date": "2026-11-06",
-  "roadsteps": {
-    "edges": 4612,
-    "samples": 3552942,
-    "onSurface": 3534884,
-    "stepSamples": 81,
-    "spots": 32,
-    "ramps": 19,
-    "over10cm": 3,
-    "long": 27,
-    "lat": 5,
-    "verifiedSteps": 0,
-    "foreignFillSteps": 5,
-    "continuousGradeChanges": 27,
-    "ms": 389561
-  },
-  "roadprobe": {
-    "sectors": 30,
-    "failed": 0,
-    "samplesWithOverlap": 2686425,
-    "highwayLaneGaps": 0,
-    "waterHoles": 0,
-    "belowWater": 0
-  },
-  "cpu": {
-    "p50": 3,
-    "p95": 9.300000000745058,
-    "p99": 14.399999998509884,
-    "max": 27.299999997019768
-  },
-  "independentAudit": {
-    "source": {
-      "name": "GTADB YANIS",
-      "version": "17",
-      "commit": "eff84632cd1686c1f4888d3324c2b0bae2fcbffb",
-      "url": "https://github.com/rolux/gtadb.org/tree/eff84632cd1686c1f4888d3324c2b0bae2fcbffb",
-      "attribution": "gtadb.org and all contributors",
-      "license": "CC BY 4.0"
+  "status": "source recovered; public rebuild not accepted",
+  "previous_128px_mosaic_metrics_valid": false,
+  "corrected_canvas": {
+    "source": "GTADB YANIS v17 z5 tiles, 256x256, full geographic canvas",
+    "tile_directory": "maps/tiles/6/yanis,17/5",
+    "tile_range": {
+      "x": [
+        24,
+        78
+      ],
+      "y": [
+        21,
+        70
+      ]
     },
-    "graph_edges": 9084,
+    "tile_size_px": 256,
+    "canvas_size_px": [
+      14080,
+      12800
+    ],
+    "scale_m_per_source_px": 1.83784227,
+    "origin": [
+      -19893.7445,
+      -18691.2549
+    ],
+    "classifier_pixel_to_world": [
+      [
+        1.83784227,
+        0,
+        -19893.7445
+      ],
+      [
+        0,
+        1.83784227,
+        -18691.2549
+      ]
+    ],
+    "world_to_classifier_pixel": [
+      [
+        0.5441163348582684,
+        0,
+        10824.511343946835
+      ],
+      [
+        0,
+        0.5441163348582684,
+        10170.217110089648
+      ]
+    ],
+    "fit": "Robust road-centerline distance fit to the pre-YANIS graph; visual detail verification in Vice City",
+    "invalidates": "128px-overlap mosaic, 2m/px proxy, 9000x11800 road clip and all metrics derived from them"
+  },
+  "raw_vectorization": {
+    "nodes": 20703,
+    "edges": 19221,
+    "length_km": 1458.3
+  },
+  "raw_independent_audit": {
+    "source": "GTADB YANIS v17 z5 tiles, 256x256, full geographic canvas",
+    "graph_edges": 19221,
     "method": "Independent RGB evidence, connected-component area >=80, source skeleton recall; 1024px tiles; no classifier/LOD input",
     "precision_graph_to_source": {
-      "samples": 282222,
+      "samples": 735114,
       "percentiles_px": [
-        0,
-        14.142,
-        71.281,
-        143.39,
-        428.245
+        0.0,
+        18.0,
+        115.378,
+        228.079,
+        65536.0
       ],
       "within": {
-        "2": 0.63325,
-        "4": 0.66316,
-        "8": 0.70557,
-        "16": 0.761
+        "2": 0.65187,
+        "4": 0.67526,
+        "8": 0.70459,
+        "16": 0.74374
       }
     },
     "recall_source_to_graph": {
-      "samples": 652547,
+      "samples": 1459948,
       "percentiles_px": [
-        13,
-        54.083,
-        151.994,
-        249.162,
-        662.113
+        6.325,
+        21.0,
+        57.628,
+        100.717,
+        253.333
       ],
       "within": {
-        "2": 0.25704,
-        "4": 0.34105,
-        "8": 0.43541,
-        "16": 0.53182
+        "2": 0.2997,
+        "4": 0.40519,
+        "8": 0.5583,
+        "16": 0.70351
       }
     },
     "districts": {
       "Ocean Beach": {
         "precision": {
-          "samples": 3712,
+          "samples": 7023,
           "percentiles_px": [
-            0,
-            1,
-            5,
-            11,
-            22.123
+            0.0,
+            1.0,
+            6.0,
+            14.213,
+            31.013
           ],
           "within": {
-            "2": 0.84914,
-            "4": 0.88631,
-            "8": 0.92942,
-            "16": 0.97333
+            "2": 0.8532,
+            "4": 0.88139,
+            "8": 0.913,
+            "16": 0.95771
           }
         },
         "recall": {
-          "samples": 12549,
+          "samples": 16318,
           "percentiles_px": [
-            10.817,
-            30.414,
-            53.045,
-            87.652,
-            113.217
+            3.606,
+            8.062,
+            13.928,
+            17.464,
+            24.183
           ],
           "within": {
-            "2": 0.23038,
-            "4": 0.33429,
-            "8": 0.45143,
-            "16": 0.58228
+            "2": 0.36009,
+            "4": 0.52654,
+            "8": 0.74948,
+            "16": 0.93161
           }
         }
       },
       "Port Gellhorn": {
         "precision": {
-          "samples": 2670,
+          "samples": 1378,
           "percentiles_px": [
-            0,
-            0,
-            18.044,
-            55.35,
-            166.078
+            0.0,
+            0.0,
+            1.0,
+            11.066,
+            52.268
           ],
           "within": {
-            "2": 0.8221,
-            "4": 0.84382,
-            "8": 0.86779,
-            "16": 0.89438
+            "2": 0.9209,
+            "4": 0.93687,
+            "8": 0.94412,
+            "16": 0.95646
           }
         },
         "recall": {
-          "samples": 5627,
+          "samples": 2865,
           "percentiles_px": [
-            3.606,
-            18.18,
-            43.603,
-            74.291,
-            97.272
+            5.0,
+            18.028,
+            57.536,
+            287.818,
+            319.341
           ],
           "within": {
-            "2": 0.40554,
-            "4": 0.52941,
-            "8": 0.64404,
-            "16": 0.72863
+            "2": 0.3637,
+            "4": 0.45236,
+            "8": 0.63176,
+            "16": 0.73054
           }
         }
       },
       "Stockyard": {
         "precision": {
-          "samples": 4696,
+          "samples": 6185,
           "percentiles_px": [
-            0,
-            1,
-            2,
-            5.453,
-            22.361
+            0.0,
+            0.0,
+            1.0,
+            2.0,
+            7.81
           ],
           "within": {
-            "2": 0.91163,
-            "4": 0.93974,
-            "8": 0.9638,
-            "16": 0.98339
+            "2": 0.96411,
+            "4": 0.98141,
+            "8": 0.99095,
+            "16": 0.99757
           }
         },
         "recall": {
-          "samples": 18305,
+          "samples": 19407,
           "percentiles_px": [
-            11.662,
-            38.471,
-            71.752,
-            104.623,
-            146.339
+            5.0,
+            11.402,
+            25.495,
+            35.735,
+            53.009
           ],
           "within": {
-            "2": 0.21218,
-            "4": 0.31724,
-            "8": 0.43518,
-            "16": 0.56498
+            "2": 0.28052,
+            "4": 0.44468,
+            "8": 0.65327,
+            "16": 0.82656
           }
         }
       },
       "Mt. Kalaga": {
         "precision": {
-          "samples": 775,
+          "samples": 828,
           "percentiles_px": [
-            0,
-            0,
-            0,
-            0,
-            2
+            0.0,
+            0.0,
+            1.0,
+            478.115,
+            510.412
           ],
           "within": {
-            "2": 0.99226,
-            "4": 1,
-            "8": 1,
-            "16": 1
+            "2": 0.91425,
+            "4": 0.92633,
+            "8": 0.94082,
+            "16": 0.94324
           }
         },
         "recall": {
-          "samples": 2611,
+          "samples": 787,
           "percentiles_px": [
-            129.062,
-            241.497,
-            356.18,
-            450.068,
-            496.035
+            1.0,
+            1.0,
+            2.236,
+            4.842,
+            11.248
           ],
           "within": {
-            "2": 0.2792,
-            "4": 0.29452,
-            "8": 0.32708,
-            "16": 0.36882
+            "2": 0.8831,
+            "4": 0.94155,
+            "8": 0.98094,
+            "16": 1.0
           }
         }
       },
       "Downtown": {
         "precision": {
-          "samples": 7090,
+          "samples": 7794,
           "percentiles_px": [
-            0,
-            1,
-            5,
-            11.045,
-            26
+            0.0,
+            0.0,
+            1.0,
+            3.0,
+            18.0
           ],
           "within": {
-            "2": 0.85726,
-            "4": 0.89097,
-            "8": 0.93329,
-            "16": 0.96601
+            "2": 0.93944,
+            "4": 0.96177,
+            "8": 0.97511,
+            "16": 0.98871
           }
         },
         "recall": {
-          "samples": 18969,
+          "samples": 18291,
           "percentiles_px": [
-            5,
-            13,
-            26,
-            34.059,
-            70.847
+            4.123,
+            9.22,
+            16.492,
+            24.021,
+            36.89
           ],
           "within": {
-            "2": 0.32991,
-            "4": 0.46787,
-            "8": 0.65217,
-            "16": 0.7924
+            "2": 0.34492,
+            "4": 0.4909,
+            "8": 0.70144,
+            "16": 0.89492
           }
         }
       },
       "Key Lento": {
         "precision": {
-          "samples": 2560,
-          "percentiles_px": [
-            0,
-            2,
-            38,
-            63.292,
-            115.247
-          ],
-          "within": {
-            "2": 0.76211,
-            "4": 0.7918,
-            "8": 0.8207,
-            "16": 0.84453
-          }
+          "samples": 0
         },
         "recall": {
-          "samples": 5626,
-          "percentiles_px": [
-            5.521,
-            24.49,
-            54.083,
-            65.987,
-            82.485
-          ],
-          "within": {
-            "2": 0.32492,
-            "4": 0.4417,
-            "8": 0.56665,
-            "16": 0.68112
-          }
+          "samples": 0
         }
       }
     }
-  }
+  },
+  "remaining": [
+    "Fit or extend runtime world bounds before export",
+    "Full repair/profile/terrain conform",
+    "Full physics and independent source validation",
+    "CPU p50 target <1 ms not met"
+  ]
 }

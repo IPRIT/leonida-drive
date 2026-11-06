@@ -19,7 +19,7 @@ CLS = os.environ.get('LEONIDA_CLS') or os.path.join(ROOT, 'raw', 'cls')
 sys.setrecursionlimit(10000)
 
 ROAD, HIGHWAY, DIRTROAD, WATER = 12, 13, 14, 1
-MPP = 2.0
+MPP = float(os.environ.get('LEONIDA_MPP', '2'))
 X0 = float(os.environ.get('LEONIDA_X0', -11368.0))
 Z0 = float(os.environ.get('LEONIDA_Z0', -11000.0))
 
@@ -68,7 +68,7 @@ def main():
     median = np.isin(cls, [2, 3, 5, 8, 9, 15]) & ndi.binary_dilation(cls == HIGHWAY, iterations=2)
     mask = ndi.binary_closing(mask | alley, structure=np.ones((3, 3)), iterations=1) & ~median
     alley &= ~ndi.binary_dilation((cls == ROAD) | (cls == HIGHWAY) | (cls == DIRTROAD), iterations=1)
-    mask = remove_small_objects(mask, 150)
+    mask = remove_small_objects(mask, int(os.environ.get('LEONIDA_ROAD_MIN_COMPONENT', '150')))
     mask = remove_small_holes(mask, 60) & ~median
     np.save(os.path.join(CLS, 'road_mask.npy'), mask)
     print('mask', time.time() - t0)

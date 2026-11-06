@@ -22,14 +22,18 @@ def main():
     ap.add_argument('--source', default=str(ROOT / 'raw/mosaic_nc_z5.png'))
     ap.add_argument('--output', default=str(ROOT / 'tools/fixes/gtadb-road-audit.json'))
     ap.add_argument('--tile', type=int, default=1024)
+    ap.add_argument('--registration', default=str(ROOT / 'tools/fixes/gtadb-yanis-v17-registration.json'))
     args = ap.parse_args()
-    registration = json.loads((ROOT / 'tools/fixes/gtadb-yanis-v17-registration.json').read_text())
+    registration = json.loads(Path(args.registration).read_text())
     roads = json.loads(Path(args.roads).read_text())
     source = np.asarray(Image.open(args.source).convert('RGB'))
     H, W = source.shape[:2]
-    T = np.vstack((np.asarray(registration['game_map_to_gtadb_transpose']), [0, 0, 1]))
-    G = np.array([[1 / 16, 0, 9216 / 16], [0, 1 / 16, 9216 / 16], [0, 0, 1]])
-    world_to_source = 2 * T @ G
+    if 'world_to_classifier_pixel' in registration:
+        world_to_source = np.vstack((np.asarray(registration['world_to_classifier_pixel']), [0, 0, 1]))
+    else:
+        T = np.vstack((np.asarray(registration['game_map_to_gtadb_transpose']), [0, 0, 1]))
+        G = np.array([[1 / 16, 0, 9216 / 16], [0, 1 / 16, 9216 / 16], [0, 0, 1]])
+        world_to_source = 2 * T @ G
     transformed = []
     for ei, edge in enumerate(roads['edges']):
         p = np.asarray(edge['p'], dtype=np.float64).reshape(-1, 2)
@@ -45,8 +49,8 @@ def main():
     district_precision = [[] for _ in district_world]
     district_recall = [[] for _ in district_world]
 
-    for y0 in range(0, min(H, 11800), args.tile):
-        for x0 in range(0, min(W, 9000), args.tile):
+    for y0 in range(0, H, args.tile):
+        for x0 in range(0, W, args.tile):
             x1, y1 = min(W, x0 + args.tile), min(H, y0 + args.tile)
             rgb = source[y0:y1, x0:x1].astype(np.int16)
             r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]

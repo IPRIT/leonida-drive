@@ -1,0 +1,50 @@
+{
+  "source": "GTADB YANIS v17 z5 tiles, 256x256, full geographic canvas",
+  "tile_directory": "maps/tiles/6/yanis,17/5",
+  "tile_range": {
+    "x": [
+      24,
+      78
+    ],
+    "y": [
+      21,
+      70
+    ]
+  },
+  "tile_size_px": 256,
+  "canvas_size_px": [
+    14080,
+    12800
+  ],
+  "scale_m_per_source_px": 1.83784227,
+  "origin": [
+    -19893.7445,
+    -18691.2549
+  ],
+  "classifier_pixel_to_world": [
+    [
+      1.83784227,
+      0,
+      -19893.7445
+    ],
+    [
+      0,
+      1.83784227,
+      -18691.2549
+    ]
+  ],
+  "world_to_classifier_pixel": [
+    [
+      0.5441163348582684,
+      0,
+      10824.511343946835
+    ],
+    [
+      0,
+      0.5441163348582684,
+      10170.217110089648
+    ]
+  ],
+  "fit": "Robust road-centerline distance fit to the pre-YANIS graph; visual detail verification in Vice City",
+  "invalidates": "128px-overlap mosaic, 2m/px proxy, 9000x11800 road clip and all metrics derived from them"
+}
