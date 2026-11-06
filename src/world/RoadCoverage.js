@@ -3,7 +3,9 @@ import { subtractSurface } from './RoadSurface.js';
 // Close genuine holes in paved driving corridors after ribbons and
 // junctions have been joined. Subtract existing asphalt with a millimetre seam
 // tolerance, keeping the different levels of an interchange independent.
-const CELL = 24;
+// Eight-metre cells balance query fan-out against triangle insertion cost.
+// Larger cells made cold road construction measurably slower on the full map.
+const CELL = 8;
 const key = (x, z) => Math.floor(x / CELL) * 100003 + Math.floor(z / CELL);
 const cross = (a, b, x, z) => (b[0] - a[0]) * (z - a[2]) - (b[2] - a[2]) * (x - a[0]);
 
@@ -15,9 +17,12 @@ export function closeRoadCoverage(roads, buckets, bget, skip) {
     if (Math.abs(den) < 1e-7) return;
     const dx = ((b[1] - a[1]) * (c[2] - a[2]) - (c[1] - a[1]) * (b[2] - a[2])) / den;
     const dz = ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / den;
-    const tri = { p, sign: Math.sign(den), plane: { at: (x, z) => a[1] + dx * (x - a[0]) + dz * (z - a[2]) } };
     const x0 = Math.min(a[0], b[0], c[0]), x1 = Math.max(a[0], b[0], c[0]);
     const z0 = Math.min(a[2], b[2], c[2]), z1 = Math.max(a[2], b[2], c[2]);
+    // Bounds are part of the hot query path. Large junction buckets can contain
+    // thousands of triangles per cell; rejecting them before three edge tests
+    // avoids most of the work without changing the generated surface.
+    const tri = { p, sign: Math.sign(den), x0, x1, z0, z1, plane: { at: (x, z) => a[1] + dx * (x - a[0]) + dz * (z - a[2]) } };
     for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++) for (let j = Math.floor(z0 / CELL); j <= Math.floor(z1 / CELL); j++) {
       const k = i * 100003 + j;
       if (!grid.has(k)) grid.set(k, []);
@@ -31,8 +36,12 @@ export function closeRoadCoverage(roads, buckets, bget, skip) {
     const list = grid.get(key(x, z));
     if (!list) return false;
     for (const t of list) {
+      if (x < t.x0 - 1e-5 || x > t.x1 + 1e-5 || z < t.z0 - 1e-5 || z > t.z1 + 1e-5) continue;
       if (Math.abs(t.plane.at(x, z) - y) > 2) continue;
-      if (t.p.every((p, i) => cross(p, t.p[(i + 1) % 3], x, z) * t.sign >= -1e-5)) return true;
+      const p = t.p, s = t.sign;
+      // Unrolled deliberately: this runs millions of times during a cold build.
+      // Array.every + modulo allocated closures and dominated older mobile CPUs.
+      if (cross(p[0], p[1], x, z) * s >= -1e-5 && cross(p[1], p[2], x, z) * s >= -1e-5 && cross(p[2], p[0], x, z) * s >= -1e-5) return true;
     }
     return false;
   };
@@ -63,6 +72,9 @@ export function closeRoadCoverage(roads, buckets, bget, skip) {
       };
       return { point, p };
     };
+    // Keep the 0.75 m search grid: a coarser 1.5 m version was benchmarked
+    // and rejected because it missed one narrow highway seam in the full
+    // Rapier probe. Performance work must not weaken surface coverage.
     const n = Math.max(1, Math.ceil(e.len / 0.75));
     for (let k = 0; k <= n; k++) {
       const s = e.len * k / n, r = row(s);

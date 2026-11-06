@@ -271,6 +271,7 @@ export async function createGame(container, options = {}) {
     game.events.emit('start', {});
     startLoop(game);
     window.__leonida = game;
+    import('./runtimeCache.js').then((m) => m.installRuntimeCache()).catch(() => {});
     return game;
   } catch (e) {
     worldReady?.dispose();

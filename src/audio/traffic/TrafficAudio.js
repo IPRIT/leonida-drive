@@ -69,6 +69,7 @@ export class TrafficAudio {
     this.st = new WeakMap();
     this.voices = [];
     this.assignT = 0;
+    this._audioFrame = 0;
     this.honks = [];
     this.sirens = new Map();
     this.vanished = [];
@@ -116,14 +117,18 @@ export class TrafficAudio {
     const idle = cfg.idle, max = cfg.max;
     const braking = a.brake > 0.5 && v > 0.5;
     s.thr = a.crashed ? 0 : braking ? 0 : clamp(s.acc / 2.0 + (v > 1.5 ? 0.16 + v / 70 : 0.06), 0, 1);
-    const wheelRpm = (g) => v / WHEEL_R * RATIOS[g - 1] * FINAL * RPM_PER * (max / 6500);
+    const rpmScale = v / WHEEL_R * FINAL * RPM_PER * (max / 6500);
+    const wheelRpm = rpmScale * RATIOS[s.gear - 1];
     // relaxed city driving: early upshifts, cruising around 1.8–3k rpm
     const up = max * (0.3 + 0.28 * s.thr);
-    if (s.gear < RATIOS.length && wheelRpm(s.gear) > up) { s.gear++; s.shiftId++; }
-    else if (s.gear > 1 && wheelRpm(s.gear) < max * 0.18) { s.gear--; s.shiftId++; }
+    if (s.gear < RATIOS.length && wheelRpm > up) { s.gear++; s.shiftId++; }
+    else if (s.gear > 1 && wheelRpm < max * 0.18) { s.gear--; s.shiftId++; }
     if (v < 0.5) s.gear = 1;
-    s.rpm = a.crashed ? 0 : Math.max(idle * (1 + 0.04 * Math.sin(performance.now() * 0.003)), wheelRpm(s.gear));
-    return { rpm: s.rpm, maxRpm: max, throttle: s.thr, engineLoad: s.thr, gear: s.gear, shiftId: s.shiftId, speedKmh: v * 3.6, brake: braking ? 1 : 0 };
+    s.rpm = a.crashed ? 0 : Math.max(idle * (1 + 0.04 * Math.sin(performance.now() * 0.003)), rpmScale * RATIOS[s.gear - 1]);
+    const tel = s.telemetry || (s.telemetry = {});
+    tel.rpm = s.rpm; tel.maxRpm = max; tel.throttle = s.thr; tel.engineLoad = s.thr;
+    tel.gear = s.gear; tel.shiftId = s.shiftId; tel.speedKmh = v * 3.6; tel.brake = braking ? 1 : 0;
+    return tel;
   }
 
   playerPos() {
@@ -148,6 +153,7 @@ export class TrafficAudio {
     const L = sys.listener;
     if (!tr) return;
     const agents = tr.agents;
+    this._audioFrame = (this._audioFrame + 1) & 1;
     this._ppDt = dt;
     const pp = this.playerPos();
     // track nearby agents so a vehicle spawned where one just vanished (carjack / take-over) keeps running
@@ -216,7 +222,15 @@ export class TrafficAudio {
         held.add(a);
       }
     }
-    for (const vc of this.voices) {
+    for (let vi = 0; vi < this.voices.length; vi++) {
+      const vc = this.voices[vi];
+      // Native AudioParam automation is considerably more expensive than the lightweight
+      // gearbox maths. Stagger pooled engines at 30 Hz; Web Audio's existing ramps keep the
+      // result continuous, while collision, horn and assignment logic still runs every frame.
+      vc._engineDt = (vc._engineDt || 0) + dt;
+      const engineTick = ((this._audioFrame + vi) & 1) === 0;
+      const engineDt = engineTick ? vc._engineDt : 0;
+      if (engineTick) vc._engineDt = 0;
       // fade out → retarget → fade in
       if (vc.release) {
         vc.fade = approach(vc.fade, 0, dt, 0.06);
@@ -232,18 +246,20 @@ export class TrafficAudio {
         }
       } else if (vc.agent) vc.fade = approach(vc.fade, 1, dt, 0.4);
       const a = vc.agent;
-      if (!a) { vc.engine.volume = 0; vc.engine.update(null, dt); ramp(vc.roll.gain, 0, sys.ctx.currentTime, 0.05); continue; }
+      if (!a) { vc.engine.volume = 0; if (engineTick) { vc.engine.update(null, engineDt); ramp(vc.roll.gain, 0, sys.ctx.currentTime, 0.05); } continue; }
       if (!agents.includes(a) || a.crashed) { vc.release = true; vc.next = null; }
-      if (!agents.includes(a)) { vc.engine.volume = 0; vc.engine.update(null, dt); continue; }
+      if (!agents.includes(a)) { vc.engine.volume = 0; if (engineTick) vc.engine.update(null, engineDt); continue; }
       const s = this.stateOf(a);
       const tel = this.simulate(a, s, dt);
       vc.engine.volume = 0.6 * vc.fade;
-      vc.engine.update(tel, dt);
-      const t = sys.ctx.currentTime;
-      // silent below ~15 km/h, then grows with speed; far quieter than the player's tyres
-      const gate = clamp((s.v - 4.2) / 4.5, 0, 1);
-      ramp(vc.roll.gain, gate * gate * clamp(Math.pow(s.v / 25, 1.2), 0, 1.3) * 0.09 * vc.fade, t, 0.12, 1e-3);
-      ramp(vc.rollBp.frequency, Math.min(800, 320 + s.v * 14), t, 0.15, 1e-2);
+      if (engineTick) {
+        vc.engine.update(tel, engineDt);
+        const t = sys.ctx.currentTime;
+        // silent below ~15 km/h, then grows with speed; far quieter than the player's tyres
+        const gate = clamp((s.v - 4.2) / 4.5, 0, 1);
+        ramp(vc.roll.gain, gate * gate * clamp(Math.pow(s.v / 25, 1.2), 0, 1.3) * 0.09 * vc.fade, t, 0.12, 1e-3);
+        ramp(vc.rollBp.frequency, Math.min(800, 320 + s.v * 14), t, 0.15, 1e-2);
+      }
     }
 
     // horns in progress: h.seq = [on, off, on, off, ...] durations

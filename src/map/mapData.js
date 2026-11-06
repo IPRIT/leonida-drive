@@ -101,17 +101,23 @@ export function addRing(path, xy, s, n, rmax) {
   path.closePath();
 }
 
-// Open polyline through midpoints (endpoints kept exactly, so junctions stay connected).
+// Open polyline with source-bounded corner rounding (<= 0.5 m tangents).
+// Midpoint splines can cut several metres off a sharp ramp; these curves stay
+// within 25 cm of the graph and keep endpoints exactly connected.
 export function addLine(path, xy, s, n) {
   if (n < 2) return;
   path.moveTo(xy[s * 2], xy[s * 2 + 1]);
   if (n === 2) { path.lineTo(xy[s * 2 + 2], xy[s * 2 + 3]); return; }
   for (let k = 1; k < n - 1; k++) {
     const x = xy[(s + k) * 2], z = xy[(s + k) * 2 + 1];
-    const nx = xy[(s + k + 1) * 2], nz = xy[(s + k + 1) * 2 + 1];
-    if (k === n - 2) path.quadraticCurveTo(x, z, nx, nz);
-    else path.quadraticCurveTo(x, z, (x + nx) * 0.5, (z + nz) * 0.5);
+    const ax = xy[(s + k - 1) * 2], az = xy[(s + k + 1) * 2 - 1];
+    const bx = xy[(s + k + 1) * 2], bz = xy[(s + k + 1) * 2 + 1];
+    const la = Math.hypot(x - ax, z - az) || 1, lb = Math.hypot(bx - x, bz - z) || 1;
+    const ra = Math.min(0.5, la * 0.5), rb = Math.min(0.5, lb * 0.5);
+    path.lineTo(x + (ax - x) * ra / la, z + (az - z) * ra / la);
+    path.quadraticCurveTo(x, z, x + (bx - x) * rb / lb, z + (bz - z) * rb / lb);
   }
+  path.lineTo(xy[(s + n - 1) * 2], xy[(s + n - 1) * 2 + 1]);
 }
 
 // Plain polygon (buildings keep their sharp corners).

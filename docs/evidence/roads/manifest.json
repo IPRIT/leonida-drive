@@ -1,0 +1,50 @@
+{
+  "source": "YANIS v17 / map.stateofleonida.net",
+  "renderer": "Actual Three.js WebGL and Cartography Canvas frames",
+  "viewport": [
+    1440,
+    900
+  ],
+  "generatedAt": "2026-11-05T23:13:29.652Z",
+  "sites": [
+    {
+      "id": "01-causeway",
+      "name": "Causeway interchange",
+      "x": -2576,
+      "z": -2770,
+      "height": 390,
+      "mpp": 0.46,
+      "errors": []
+    },
+    {
+      "id": "02-airport",
+      "name": "Airport district interchange",
+      "x": -2949,
+      "z": -150,
+      "height": 390,
+      "mpp": 0.46,
+      "errors": []
+    },
+    {
+      "id": "03-keys",
+      "name": "Keys highway interchange",
+      "x": -3065,
+      "z": 6541,
+      "height": 390,
+      "mpp": 0.46,
+      "errors": []
+    },
+    {
+      "id": "04-downtown",
+      "name": "Downtown signalised junction",
+      "x": -657,
+      "z": 68,
+      "height": 210,
+      "mpp": 0.25,
+      "obliqueDistance": 55,
+      "obliqueHeight": 520,
+      "errors": []
+    }
+  ],
+  "errors": []
+}

@@ -9,7 +9,7 @@ const versionDefine = (dev) => ({ __APP_VERSION__: JSON.stringify(pkg.version), 
 
 export default defineConfig(({ command }) => ({
   define: versionDefine(command === 'serve'),
-  server: { host: '127.0.0.1', port: 5317, strictPort: true },
+  server: { host: '0.0.0.0', port: 5317, strictPort: true, allowedHosts: true },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 4000,

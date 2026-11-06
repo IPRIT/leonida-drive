@@ -33,6 +33,7 @@ export class AudioSystem {
     this.slowmo = 1;
     this.hrtf = true;
     this.activeShots = 0;
+    this._voiceFrame = 0;
     this.playerVehicle = null;
     this.pendingVehicle = undefined;
     this.parked = [];
@@ -240,7 +241,18 @@ export class AudioSystem {
         Ln.setOrientation(fx, fy, fz, ux, uy, uz);
       }
     }
-    for (const v of this.voices) v.update(dt, L, this.snapAt || 0);
+    this._voiceFrame = (this._voiceFrame + 1) & 1;
+    const ownVoice = this.player?.engine?.voice;
+    let vi = 0;
+    for (const v of this.voices) {
+      v._updateDt = (v._updateDt || 0) + dt;
+      // Keep the player's own engine at full rate. Distant/pooled voices are staggered at
+      // 30 Hz; their AudioParams already interpolate between targets, so this is inaudible
+      // but avoids flooding the browser's audio automation queue on every display frame.
+      const due = v.fresh || this.snapAt || v === ownVoice || ((this._voiceFrame + vi) & 1) === 0;
+      if (due) { const step = v._updateDt; v._updateDt = 0; v.update(step, L, this.snapAt || 0); }
+      vi++;
+    }
     this.occlusionStep();
     this._cpu += performance.now() - t0;
     this.stats.cpuMs = this.stats.cpuMs * 0.95 + this._cpu * 0.05;

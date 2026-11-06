@@ -336,7 +336,7 @@ def vectorize_depth(heights, world, packer):
 # the game's road graph (public/data/roads.json, src/world/Roads.js) is not changed.
 #
 #   1. airside: runways / taxiways (as src/air/runways.js + Roads.markAirside)
-#   2. tunnels (as Roads.findTunnels) and short gaps between facing dead ends (map only)
+#   2. tunnel interiors (as Roads.findTunnels); surface gaps are owned by export.py
 #   3. kind smoothing: tiny isolated "highway" networks become roads, short class runs inside a continuous
 #      stroke take the class of their neighbours (majority with a minimum run length)
 #   4. strokes: edges chained through straight continuations; highway strokes -> mainline / ramp roles,
@@ -344,7 +344,7 @@ def vectorize_depth(heights, world, packer):
 #   5. drawn widths: generalised carriageway widths (ramps narrower), limited by the clearance to a parallel
 #      carriageway so divided highways stay two separate lines
 #   6. levels: flat highway crossings lifted onto overpasses (as Roads.gradeSeparate) + bridge decks
-#   7. dead ends that stop just short of another road are extended to meet it
+#   7. centreline endpoints remain exactly those in roads.json (shared 3D/map truth)
 #   8. output: polylines merged along strokes, split (mid-segment, so tangents stay continuous) where the
 #      class / level / bridge / width changes
 # ================================================================================================================
@@ -526,7 +526,7 @@ def _hermite(A, B, L, step=7.0):
     return pts, y
 
 
-def close_gaps(net):
+def close_gaps(net, tunnels_only=False):
     deg = [len(a) for a in net.adj]
     ends = []
     for e in net.E:
@@ -562,7 +562,10 @@ def close_gaps(net):
             if not wet and top - max(A['y'], B['y']) >= 14:
                 cands.append((L * (3 - ca - cb), 'tunnel', A, B, L))
                 continue
-        if L <= GAP_MAX and ca >= 0.8 and cb >= 0.8:
+        # Surface connectors belong to export.py, the shared authority for
+        # both the driving mesh and cartography. The map only reconstructs
+        # tunnel interiors, which Roads.findTunnels also adds at runtime.
+        if not tunnels_only and L <= GAP_MAX and ca >= 0.8 and cb >= 0.8:
             cands.append((1e6 + L * (3 - ca - cb), 'gap', A, B, L))
     cands.sort(key=lambda c: c[0])
     nt = ng = 0
@@ -1037,6 +1040,21 @@ def snap_dead_ends(net):
 
 
 # ---- 8. output polylines ---------------------------------------------------------------------------------------
+def apply_overpasses(net, crossings):
+    """Apply the shared export.py crossing levels to map strokes.
+
+    Previously the map skipped its legacy gradeSeparate when this array was
+    present but never consumed it, so some upper decks were drawn as ground
+    streets even though map_sync.mjs and the 3D scene separated them.
+    """
+    for o in crossings:
+        r2 = (o['radius'] + 12.0) ** 2
+        for ei in o.get('upper', ()):
+            e = net.E[ei]
+            near = np.sum((e['p'] - [o['x'], o['z']]) ** 2, axis=1) <= r2
+            e['lift'][near] = np.maximum(e['lift'][near], o.get('clearance', 7.4))
+
+
 def _seg_attrs(e):
     """per-segment draw attributes (cls flags, width dm)"""
     n = len(e['p'])
@@ -1160,14 +1178,18 @@ def build_roads(roads, packer, height_at, geom=None, extra=()):
     t0 = time.time()
     net = RoadNet(roads, height_at)
     detect_airside(net)
-    close_gaps(net)
+    close_gaps(net, tunnels_only=True)
     clean_bridges(net)
     smooth_kinds(net)
     classify(net)
     keys = assign_routes(net)
     if 'overpasses' not in roads:
         grade_separate(net)
-    snap_dead_ends(net)
+    else:
+        apply_overpasses(net, roads['overpasses'])
+    # Do not snap or extend dead ends here. roads.json is the single source of
+    # centreline truth; independent map-only edits used to diverge from the
+    # surface on which vehicles actually drive.
     lines = road_polylines(net) + list(extra)  # extra: park footpaths (tools/parks.py)
     if geom:
         lines = airside_from_landmarks(lines, geom)
@@ -1499,7 +1521,8 @@ def route_geometry(net, packer, keys):
         routes.append(dict(kind=kind, num=num, len=round(total)))
     m = packer.geometry('rt', parts, dict(kind='route'))
     exits = build_exits(net, keys)
-    log(f'routes: {len(routes)} ({", ".join(f"{r["kind"]}-{r["num"]} {r["len"]} m" for r in routes)}), '
+    route_summary = ', '.join('{}-{} {} m'.format(r['kind'], r['num'], r['len']) for r in routes)
+    log(f'routes: {len(routes)} ({route_summary}), '
         f'{m["parts"]} paths, {len(exits)} exits, {time.time() - t0:.1f}s')
     return routes, {'rt': m}, exits
 

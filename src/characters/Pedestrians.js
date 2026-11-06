@@ -1400,9 +1400,12 @@ export class Pedestrians {
     const a = w ? w.a : 0, b = w ? w.b : p.e.len;
     if (p.s < a || p.s > b) p.s = Math.min(Math.max(p.s, a), b);
     let q = this._pathPoint(p);
+    const oldShift = p.shift;
     if (p.obsOn) this._updateShift(p, q, dt);
     else p.shift = Math.max(0, p.shift - dt * 0.45);
-    q = this._pathPoint(p);
+    // The overwhelming majority of walkers keep the same lateral offset. Reuse the
+    // first mitre/height evaluation instead of computing the identical point twice.
+    if (p.shift !== oldShift) q = this._pathPoint(p);
     let dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz);
     // far from the carrot (pushed, knocked down, a route change on the other side): back to the nearest sidewalk
     // point instead of cutting across the road

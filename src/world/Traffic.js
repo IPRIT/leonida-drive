@@ -44,6 +44,9 @@ function segDist(ax, az, bx, bz, cx, cz, dx, dz) {
 }
 
 function wrapAngle(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
+// Numeric lane keys avoid thousands of template strings per second. There are at most eight lanes
+// per direction in the source graph; keeping a nibble leaves room for future wider roads.
+const laneKey = (e, dir, lane) => (e.i * 2 + (dir > 0 ? 1 : 0)) * 16 + lane;
 
 // AI traffic: lane following on the road graph, IDM car-following, traffic lights, crashes become physics.
 export class Traffic {
@@ -69,6 +72,18 @@ export class Traffic {
     this.parkedMax = opts.parkedMax ?? 28;
     this.parkTimer = 0;
     this.lanes = new Map();
+    this._laneInfoCache = new WeakMap();
+    this._laneRecords = [];
+    this._laneRecordN = 0;
+    this._visualCounts = new Map();
+    this._vPos = new THREE.Vector3();
+    this._vQ = new THREE.Quaternion();
+    this._vWQ = new THREE.Quaternion();
+    this._vWP = new THREE.Vector3();
+    this._axisX = new THREE.Vector3(1, 0, 0);
+    this._axisY = new THREE.Vector3(0, 1, 0);
+    this._linVel = { x: 0, y: 0, z: 0 };
+    this._angVel = { x: 0, y: 0, z: 0 };
     this.lights = new TrafficLights(roads, scene);
     this.spawnTimer = 0;
     this.targetCount = 20;
@@ -97,8 +112,13 @@ export class Traffic {
 
   // ---------- geometry helpers ----------
   laneInfo(e) {
-    const n = lanesFor(e);
-    return { n, w: (e.oneway ? e.w : e.w / 2) / n };
+    let info = this._laneInfoCache.get(e);
+    if (!info) {
+      const n = lanesFor(e);
+      info = { n, w: (e.oneway ? e.w : e.w / 2) / n };
+      this._laneInfoCache.set(e, info);
+    }
+    return info;
   }
 
   // point on lane: returns {x,y,z,tx,tz,k}
@@ -440,25 +460,33 @@ export class Traffic {
     }
     // lane occupancy lists for leader search
     const lanes = this.lanes;
-    lanes.clear();
-    const push = (key, a, s) => { let l = lanes.get(key); if (!l) lanes.set(key, (l = [])); l.push([s, a]); };
+    for (const l of lanes.values()) l.length = 0;
+    this._laneRecordN = 0;
+    const push = (key, a, s) => {
+      let l = lanes.get(key); if (!l) lanes.set(key, (l = []));
+      const n = this._laneRecordN++;
+      const rec = this._laneRecords[n] || (this._laneRecords[n] = [0, null]);
+      rec[0] = s; rec[1] = a; l.push(rec);
+    };
     for (const a of this.agents) {
       if (a.crashed || a.parked) continue;
-      if (a.mode === 'lane') push(`${a.edge.i}:${a.dir}:${a.lane}`, a, a.s);
+      if (a.mode === 'lane') push(laneKey(a.edge, a.dir, a.lane), a, a.s);
       else {
         const t = a.turn;
-        push(`${a.edge.i}:${a.dir}:${a.lane}`, a, a.edge.len - this.nodeRadius(this.endNode(a)) + t.u);
-        push(`${t.e.i}:${t.dir}:${t.lane}`, a, t.sStart - (t.L - t.u));
+        push(laneKey(a.edge, a.dir, a.lane), a, a.edge.len - this.nodeRadius(this.endNode(a)) + t.u);
+        push(laneKey(t.e, t.dir, t.lane), a, t.sStart - (t.L - t.u));
       }
     }
     for (const l of lanes.values()) l.sort((p, q) => p[0] - q[0]);
-    const wrecks = this.agents.filter((a) => a.crashed);
+    const wrecks = this._wrecks || (this._wrecks = []);
+    wrecks.length = 0;
+    for (const a of this.agents) if (a.crashed) wrecks.push(a);
     // gaps
     const pp = player.position, pv = player.velocity;
     for (const a of this.agents) {
       if (a.crashed || a.parked) continue;
       let gap = 1e9, leadV = 0;
-      const key = a.mode === 'lane' ? `${a.edge.i}:${a.dir}:${a.lane}` : `${a.turn.e.i}:${a.turn.dir}:${a.turn.lane}`;
+      const key = a.mode === 'lane' ? laneKey(a.edge, a.dir, a.lane) : laneKey(a.turn.e, a.turn.dir, a.turn.lane);
       const sMe = a.mode === 'lane' ? a.s : a.turn.sStart - (a.turn.L - a.turn.u);
       const l = lanes.get(key);
       if (l) {
@@ -467,7 +495,7 @@ export class Traffic {
         }
       }
       if (a.mode === 'turn') {
-        const la = lanes.get(`${a.edge.i}:${a.dir}:${a.lane}`);
+        const la = lanes.get(laneKey(a.edge, a.dir, a.lane));
         const s0 = a.edge.len - this.nodeRadius(this.endNode(a)) + a.turn.u;
         if (la) for (const [s, o] of la) {
           if (o !== a && s > s0 + 0.1) { const g = s - s0 - a.halfLen - o.halfLen; if (g < gap) { gap = g; leadV = o.v; } break; }
@@ -478,7 +506,7 @@ export class Traffic {
         const sStop = e.len - this.nodeRadius(this.endNode(a));
         // next lane's last car (close to its start)
         if (gap > 1e8 && a.next) {
-          const nl = lanes.get(`${a.next.e.i}:${a.next.dir}:${Math.min(a.lane, this.laneInfo(a.next.e).n - 1)}`);
+          const nl = lanes.get(laneKey(a.next.e, a.next.dir, Math.min(a.lane, this.laneInfo(a.next.e).n - 1)));
           if (nl && nl.length) { gap = e.len - a.s + nl[0][0] - a.halfLen - nl[0][1].halfLen - 1; leadV = nl[0][1].v; }
         }
         // traffic light, then a junction reservation: enter only if my path through the node conflicts with no
@@ -533,6 +561,12 @@ export class Traffic {
     o.x = x; o.y = y; o.z = z; o.ok = true;
   }
 
+  _driveVelocity(a, x, y, z) {
+    const o = this._linVel; o.x = x; o.y = y; o.z = z;
+    a.body.setLinvel(o, true); // Rapier copies the vector synchronously
+    this._v0(a, x, y, z);
+  }
+
   fixedUpdate(dt) {
     const P = {};
     for (const a of this.agents) {
@@ -545,9 +579,8 @@ export class Traffic {
       if (a.parked) {
         const t = b.translation();
         const vx = (a.anchor.x - t.x) * 4, vy = (a.anchor.y - t.y) * 6, vz = (a.anchor.z - t.z) * 4;
-        b.setLinvel({ x: vx, y: vy, z: vz }, true);
-        this._v0(a, vx, vy, vz);
-        b.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        this._driveVelocity(a, vx, vy, vz);
+        const av = this._angVel; av.x = 0; av.y = 0; av.z = 0; b.setAngvel(av, true);
         a.err = Math.hypot(a.anchor.x - t.x, a.anchor.z - t.z);
         if (a.err > 2.5) this.crash(a);
         continue;
@@ -613,13 +646,12 @@ export class Traffic {
       a.err = Math.hypot(ex, ez);
       if (a.err > 9) { a.lost = true; const lv = b.linvel(); this._v0(a, lv.x, lv.y, lv.z); continue; }
       const vx = tx * a.v + ex * 6, vy = ey * 8, vz = tz * a.v + ez * 6;
-      b.setLinvel({ x: vx, y: vy, z: vz }, true);
-      this._v0(a, vx, vy, vz);
+      this._driveVelocity(a, vx, vy, vz);
       const yaw = Math.atan2(-tx, -tz);
       const r = b.rotation();
       const cy = 2 * Math.atan2(r.y, r.w);
       const yerr = wrapAngle(yaw - cy);
-      b.setAngvel({ x: 0, y: yerr * 9, z: 0 }, true);
+      const av = this._angVel; av.x = 0; av.y = yerr * 9; av.z = 0; b.setAngvel(av, true);
       a.steer += (THREE.MathUtils.clamp(yerr * 4, -0.5, 0.5) - a.steer) * 0.2;
     }
   }
@@ -846,10 +878,10 @@ export class Traffic {
   // render
   updateVisual(alpha, dt, night) {
     this.night = night;
-    const counts = new Map();
-    const pos = new THREE.Vector3(), q = new THREE.Quaternion(), wq = new THREE.Quaternion(), wp = new THREE.Vector3();
+    const counts = this._visualCounts; counts.clear();
+    const pos = this._vPos, q = this._vQ, wq = this._vWQ, wp = this._vWP;
     const m = this._m, one = this._s;
-    const axisX = new THREE.Vector3(1, 0, 0), axisY = new THREE.Vector3(0, 1, 0);
+    const axisX = this._axisX, axisY = this._axisY;
     const bodies = this._bodies || (this._bodies = new Map());
     bodies.clear();
     for (const a of this.agents) {

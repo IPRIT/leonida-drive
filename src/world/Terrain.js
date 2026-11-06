@@ -127,6 +127,8 @@ export class Terrain {
     this._frustum = new THREE.Frustum();
     this._m = new THREE.Matrix4();
     this._box = new THREE.Box3();
+    this._cameraSignature = new Float64Array(32);
+    this._cameraValid = false;
   }
 
   // surface: the ground's look on an ordinary mesh in world coordinates (the road embankments / aprons beside the
@@ -317,6 +319,14 @@ export class Terrain {
   // choose chunk LODs for this camera
   update(camera, dt) {
     this.uniforms.uTime.value += dt;
+    const sig = this._cameraSignature, world = camera.matrixWorldInverse.elements, projection = camera.projectionMatrix.elements;
+    let changed = !this._cameraValid;
+    if (!changed) {
+      for (let i = 0; i < 16; i++) if (sig[i] !== world[i] || sig[16 + i] !== projection[i]) { changed = true; break; }
+    }
+    if (!changed) return; // shader time still advances; identical camera means identical chunk LODs and buffers
+    for (let i = 0; i < 16; i++) { sig[i] = world[i]; sig[16 + i] = projection[i]; }
+    this._cameraValid = true;
     const p = camera.position;
     this._m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this._frustum.setFromProjectionMatrix(this._m);

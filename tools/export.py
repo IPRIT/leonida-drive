@@ -1529,9 +1529,11 @@ def main():
                 np_.append(p[i] + seg * (k / n))
                 nb.append(bool(br[i + 1]) if k == n else bool(br[i] and br[i + 1]))
         E.append({'src': e, 'P': np.array(np_), 'B': np.array(nb, bool)})
-    # pass 1b: smooth centrelines along chains of edges joined at plain (degree-2) nodes. Taubin low-pass
-    # (shrink-free) removes skeleton zigzags and junction-approach kinks; lateral drift is capped by width.
-    # Widths taper over +-30 m where neighbouring edges of a chain differ.
+    # pass 1b: source-constrained, arc-length-weighted Taubin smoothing along
+    # chains joined at plain nodes. Drift is measured to the original polyline
+    # and capped below one source texel, rather than allowing several metres
+    # on wide interchange blobs. Widths taper over +-30 m between classes.
+    from centreline import constrained_taubin, drift_report
     deg = {}
     for ed in E:
         a, b = ed['src']['a'], ed['src']['b']
@@ -1543,6 +1545,7 @@ def main():
         by_node.setdefault(ed['src']['b'], []).append(ei)
     seen = set()
     chains = []
+    geometry_fit = []
     for ei in range(len(E)):
         if ei in seen:
             continue
@@ -1575,20 +1578,10 @@ def main():
             widths.append(E[k]['src']['w'])
         Q0 = np.concatenate(parts)
         n = len(Q0)
+        wpt = np.concatenate([np.full(c, w) for c, w in zip(owners, widths)])
+        Q = constrained_taubin(Q0, widths=wpt, iterations=24, max_drift=0.75) if n >= 5 else Q0.copy()
         if n >= 5:
-            Q = Q0.copy()
-            wpt = np.concatenate([np.full(c, w) for c, w in zip(owners, widths)])
-            lim = np.maximum(1.2, wpt * 0.3)
-            for _ in range(24):
-                for lam in (0.5, -0.53):
-                    lap = (Q[:-2] + Q[2:]) / 2 - Q[1:-1]
-                    Q[1:-1] += lam * lap
-                d = Q - Q0
-                dn = np.hypot(d[:, 0], d[:, 1])
-                over = dn > lim
-                Q[over] = Q0[over] + d[over] / dn[over, None] * lim[over, None]
-        else:
-            Q = Q0
+            geometry_fit.append(drift_report(Q0, Q))
         # tapered widths along the chain
         S = np.r_[0, np.cumsum(np.hypot(*np.diff(Q, axis=0).T))]
         wq = np.concatenate([np.full(c, w) for c, w in zip(owners, widths)]).astype(np.float64)
@@ -1961,7 +1954,10 @@ def main():
             max_grade.append(float(np.max(np.abs(np.diff(y)) / np.maximum(np.diff(S), 0.5))))
     node_y = [round(float(Y[ni]), 3) for ni in range(NN)]
     json.dump({'nodes': nodes, 'ny': node_y, 'edges': out_edges, 'ends': roads.get('ends', []), 'overpasses': crossings,
-               'profileFit': {'solver': 'bounded', 'clearance': CLEARANCE, 'passes': bounded.stats, 'review': crossing_rejects}},
+               'profileFit': {'solver': 'bounded', 'clearance': CLEARANCE, 'passes': bounded.stats, 'review': crossing_rejects},
+               'geometryFit': {'algorithm': 'source-constrained-arclength-taubin-v1', 'drift_budget_m': 0.75,
+                               'max_drift_m': max((r['max_m'] for r in geometry_fit), default=0.0),
+                               'mean_chain_drift_m': round(sum(r['mean_m'] for r in geometry_fit) / max(1, len(geometry_fit)), 4)}},
               open(os.path.join(OUT, 'roads.json'), 'w'), separators=(',', ':'))
     mg = np.array(max_grade)
     print('roads pts', total_pts, '%.2f MB' % (os.path.getsize(os.path.join(OUT, 'roads.json')) / 1e6), 'water nodes', sum(1 for d in dist if 0 < d < INF),

@@ -28,6 +28,7 @@ export class Scatter {
     this._box = new THREE.Box3();
     this._last = new THREE.Vector3(1e9, 0, 0);
     this._lastDir = new THREE.Vector3();
+    this._dir = new THREE.Vector3();
     this._timer = 0;
     this.hidden = new Set();
   }
@@ -71,7 +72,7 @@ export class Scatter {
   update(camera, dt, force = false) {
     this._timer -= dt;
     const p = camera.position;
-    const dir = camera.getWorldDirection(new THREE.Vector3());
+    const dir = camera.getWorldDirection(this._dir);
     if (!force && this._timer > 0 && p.distanceToSquared(this._last) < 400 && dir.dot(this._lastDir) > 0.995) return;
     this._timer = 0.25;
     this._last.copy(p);
@@ -97,12 +98,16 @@ export class Scatter {
       const far = Math.sqrt(d2) / R;
       const stride = far > 0.7 ? 3 : far > 0.45 ? 2 : 1;
       const idx = c.idx;
+      const hasHidden = this.hidden.size > 0;
       for (let j = 0; j < idx.length; j += stride) {
         const i = idx[j];
-        if (this.hidden.size && this.hidden.has(i)) continue;
+        if (hasHidden && this.hidden.has(i)) continue;
         if (k >= cap) break;
-        dst.set(this.M.subarray(i * 16, i * 16 + 16), k * 16);
-        dcol[k * 3] = this.rawCol[i * 3]; dcol[k * 3 + 1] = this.rawCol[i * 3 + 1]; dcol[k * 3 + 2] = this.rawCol[i * 3 + 2];
+        // Do not create a subarray view for every visible instance. At ultra density that meant
+        // tens of thousands of short-lived objects per refresh and periodic GC stalls on old CPUs.
+        const src = i * 16, dst16 = k * 16, srcCol = i * 3, dstCol = k * 3;
+        for (let q = 0; q < 16; q++) dst[dst16 + q] = this.M[src + q];
+        dcol[dstCol] = this.rawCol[srcCol]; dcol[dstCol + 1] = this.rawCol[srcCol + 1]; dcol[dstCol + 2] = this.rawCol[srcCol + 2];
         k++;
       }
     }
